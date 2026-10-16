@@ -3,13 +3,18 @@
 仓库：`wobang-son-academician`　远端：`https://github.com/Issac0205/wobang-son-academician.git`
 站点：`https://issac0205.github.io/wobang-son-academician/`
 
-> ⚠ **本机推不上去**：开发机的 hosts 把 `github.com` / `api.github.com` / `github.io` / `pages.github.com` 指向 `127.0.0.1`，`git push` 必然失败（`git ls-remote` 实测退出码 128）。**请换到能访问 GitHub 的网络（或开代理）后再执行下面的命令**。仓库本体已在本地备好：已 `git init`、已提交、已打 `v1.0.0` 标签，你只需要推。
+> ⚠ **本机能不能推，取决于 TLS 配置，而不是「能不能上网」。** 开发机的 hosts 把 `github.com` / `api.github.com` / `github.io` / `pages.github.com` 等约 26 个域名指向 `127.0.0.1`（实测 `Resolve-DnsName github.com` → `127.0.0.1`）。但本机 443 端口跑着 **Watt Toolkit（Steam++）** 的本地反代（实测 `https://github.com` 返回真首页，响应头 `Server: github.com,WattToolkit`），**所以 HTTP 流量其实是通的**。
+> 卡点在证书：浏览器信任 Watt Toolkit 装进系统证书库的 CA，**git 默认用自己的 CA bundle，于是报 `SSL peer certificate or SSH remote key was not OK`（`git ls-remote` 退出码 128）**。解法是让 git 改用 Windows 系统证书库：`git config http.sslBackend schannel`。**实测有效**：加上后 `git ls-remote https://github.com/octocat/Hello-World.git` 成功返回 refs。
+> 另需注意两点：① 目标仓库必须**先在 GitHub 上建好**，否则报 `remote: Repository not found.`；② 若 Windows 凭据管理器里已有 `git:https://github.com` 条目但 git 没有助手，需配 `git config credential.helper manager`（本机 `cmdkey /list` 实测存在该条目）。
 
 ## 一、直接复制这段（在仓库根目录 `评院士/` 下执行）
 
 ```bash
 cd 评院士
 git remote add origin https://github.com/Issac0205/wobang-son-academician.git
+# 本机必需的 TLS / 凭据配置（仓库本地，不动全局）
+git config --local http.sslBackend schannel
+git config --local credential.helper manager
 git branch -M main
 git push -u origin main
 git push --tags
