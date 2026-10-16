@@ -251,6 +251,44 @@ t16 存档白名单 / negativeMoneyMonths 持久化、t22 项目刷新与招生�
   与当前 dist/ 逐字节一致；version.mjs --archive 记录 check=0 / simulate=0，--verify 8 个版本目录全部对账一致。
 - 实机截图：artifacts/verification/wiki-mobile-375-top.png / -mid.png、wiki-desktop-1366-top.png / -mid.png。
 
+## 1.7.0 — 亲带同时数量上限改为「按头衔」（2026-10-19，用户：旧上限由精力派生不合理）
+
+### 玩法（本轮只改「同时数量上限」这一件事）
+- 老板「亲带」的**同时数量上限**从 **精力派生**（旧实现 `Math.max(1, Math.floor(精力上限 / 2))`，健康好时 6–10 个）
+  改为 **按头衔**：`src/data/ranks.js` 每档新增 `playerLeadCap` = **1 / 2 / 2 / 3 / 3 / 4 / 4 / 4**
+  （副研究员 / 研究员 / 副教授 / 教授 / 优青·万人 / 杰青·长江单有 / 兼有 / 院士）。
+- **亲带的代价一行未改**：项目推进 ×0.85（`PLAYER_LEAD_MUL`）、每月多 1 点精力（`PLAYER_LEAD_ENERGY_COST`）、
+  该项目论文一作全部归玩家（t24）。`src/core/engine.js` 的 `reduceToggleLead` 只换上限来源，其余逻辑原样。
+- 上限值**只住 src/data**：core 用 `rankOf(state.player.rankIndex).playerLeadCap`；`check.mjs` 的 core 常量白名单照旧 0 错。
+- 机器人 `src/systems/bots.js` 的 `toggleLeads` 同步换成头衔上限（旧代码里那份「精力派生」不再留作第二套口径）。
+- 新增选择器 `selectPlayerLead(state) -> { cap, count, over, canAdd, rankIndex, rankTitle }`，
+  经 `buildViewModel().projects.lead` 透传给 UI（UI 不写死上限）。
+
+### 旧档超限（边界）
+- **不追溯取消**：旧档可能挂着超过新上限的亲带项目（如副教授挂 4 个），这类项目照旧有效、
+  UI 仍显示「亲带中」，引擎里没有任何自动撤销路径（`advanceMonth` 后亲带数不变，测试钉住）。
+- **禁止再新增**：超限时 toggle ON 被拒 + 中文 toast
+  「『副教授』最多同时亲带 2 个项目（随头衔提升）；你已亲带 4 个，先取消一个再带。」；状态一字未改。
+- **取消永远允许**：取消亲带不受上限约束（超限档也一样）。
+- 项目页给一条**可关掉**的提示（`.projects-intro` 同款样式 + `data-role="lead-over"`，
+  `data-action="lead-over-dismiss"`；只记 app.js 的 localUi，不写 GameState；超限解除后再超限会重新提示）。
+
+### 百科自动同步（沿用 v1.5.0 数据驱动链路）
+- `selectWiki()` 改为 `selectWiki(state)`（`selectUiConstants(state)`），因为词条里的 N 必须取**玩家当前头衔**：
+  第 4 章「一作三途径 → 亲带」= `项目推进 ×0.85 · 每月多 1 点精力 · 同时最多 1 个（随头衔提升；你当前是「副研究员」）`；
+  第 3 章「晋升门槛」每档另加「亲带上限 N 项」，整条阶梯在百科里可见。
+- ui-smoke §19 的逐字对账表新增该词条；§19b 在 rank1/3/4/8 下实测词条 N = 1/2/3/4（与 core 一致、禁止 UI 写死）；
+  §20 在 DOM 上实测超限旧档：4 个「亲带中」标签 + 提示文案 + 被拒 toast + 取消放行 + 提示可关掉。
+
+### 测试与验收
+- 五条命令退出码全 0：`scripts/check.mjs`（0 错 0 警）、`tests/run-all.mjs`（11/11 脚本，新增
+  `tests/player-lead.test.mjs` 73 条：八档上限、达上限拒绝、精力无关、取消放行、超限旧档、读档往返、百科逐字对账）、
+  `scripts/ui-smoke.mjs`（166 项）、`scripts/asset-audit.mjs`（外部引用 0）、`scripts/version.mjs --verify`（10 个版本对账）。
+- 八档实测（引擎真跑，健康 100 / 精力上限 12）：1/2/2/3/3/4/4/4；健康压到 1（精力上限 1）时院士仍 4。
+- 归档：`versions/v1.7.0/wobang-son-academician.html` 576 550 字节，
+  sha256 `2971fb778aa6cd2d…`，与当前 `dist/` 逐字节一致；`--archive` 记录 check=0 / simulate=0。
+- 机器人读数（信息性·非门禁）随上限收紧变化：速通 1/8、随手玩 16/16；本轮不重新标定锚点。
+
 ---
 
 ## 契约变更记录

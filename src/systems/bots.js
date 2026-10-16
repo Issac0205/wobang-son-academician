@@ -22,7 +22,7 @@ import { HARDPOINT_METHODS, TEAM_MONEY, SOLO_MONEY, TEAM_MIN_STUDENTS, MAX_PROJE
 import { PAPER_TIER_ORDER } from '../data/papers.js';
 import { CONSUME_MODES, CONSUMABLE_PRICE_PER_UNIT, CONSUMABLE_BUY_PACK, MAX_MONTHS } from '../data/tuning.js';
 import { WAGE } from '../data/students.js';
-import { activeProjects, activeStudents, expectedWageTier, energyMax, projectProgressPct, rankStatus } from '../core/formulas.js';
+import { activeProjects, activeStudents, expectedWageTier, projectProgressPct, rankStatus } from '../core/formulas.js';
 import { round } from '../core/rng.js';
 import { canAcceptOffer, canRecruitOffer, offerReachable } from '../core/rules.js';
 
@@ -486,13 +486,15 @@ function grabFirstAuthors(state, cfg) {
 
 /**
  * 亲带（game/togglePlayerLead）——t24 一作归属模型下，亲带项目的**全部论文一作归玩家**，
- * 因此它是老板凑 q1/q2/正刊一作门槛的主渠道（引擎的并发上限 = max(1, floor(精力/2))）。
+ * 因此它是老板凑 q1/q2/正刊一作门槛的主渠道。
+ * v1.7.0：引擎的并发上限已改为**按头衔**（src/data/ranks.js 的 playerLeadCap，不再由精力派生）；
+ * 机器人这里同样以头衔上限为天花板，cfg.leadMax 只作为「策略自愿少带几个」的更低自限。
  * 策略：优先亲带等级最高、进度最靠前的在研项目，超上限的旧项目主动撤掉。
  */
 function toggleLeads(state, cfg) {
   if (!cfg.usePlayerLead) return state;
   let next = state;
-  const cap = Math.max(1, Math.min(cfg.leadMax || 99, Math.floor(energyMax(next) / 2)));
+  const cap = Math.max(1, Math.min(cfg.leadMax || 99, rankOf(next.player.rankIndex).playerLeadCap));
   // t41：保守配置只亲带「值得的本子」（T4+），其余在研项目不亲带——只改一作来源这一个变量。
   const minTier = cfg.leadMinTier || 0;
   const targets = activeProjects(next)

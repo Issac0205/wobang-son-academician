@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 我帮儿子评院士 v1.6.0 · 单文件构建 · 2026-10-16T11:04:25.873Z · 源码：39 个模块（纯前端 ES Module，零构建依赖） -->
+<!-- 我帮儿子评院士 v1.7.0 · 单文件构建 · 2026-10-16T12:00:07.522Z · 源码：39 个模块（纯前端 ES Module，零构建依赖） -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
@@ -2632,45 +2632,50 @@ function freezeState(state) {
  * 用 rankOf(index) 取，避免各处写 +1/-1。
  * SPEC 硬性：头衔序列 副研究员 > 研究员 > 副教授 > 教授，
  *          上限梯度 院士 > 杰青/长江兼有 > 杰青/长江单有 > 万人/优青 > 其他教授。
+ *
+ * v1.7.0：老板「亲带」的**同时数量上限**由头衔决定（playerLeadCap，1/2/2/3/3/4/4/4），
+ * 不再由精力上限派生（旧实现 = max(1, floor(精力上限/2))）。上限值只住本文件；
+ * core 通过 rankOf(state.player.rankIndex).playerLeadCap 取值，UI 通过 vm 透传，均不写死。
+ * 亲带本身的代价（推进 ×0.85、每月多 1 点精力、一作全归玩家）不变，见 src/data/hardpoints.js。
  */
 
-/** @typedef {{index:number,id:string,title:string,ifReq:number,q1Req:number,q2Req:number,topReq:number,projTierReq:number,projCountReq:number,masterCap:number,phdCap:number,schoolFundYear:number,maxProjectTier:number,concurrentCap:number,goldenAge:number|null,note?:string}} Rank */
+/** @typedef {{index:number,id:string,title:string,ifReq:number,q1Req:number,q2Req:number,topReq:number,projTierReq:number,projCountReq:number,masterCap:number,phdCap:number,schoolFundYear:number,maxProjectTier:number,concurrentCap:number,playerLeadCap:number,goldenAge:number|null,note?:string}} Rank */
 
 /** @type {Rank[]} 索引即等级（1..8），RANKS[0] 为占位 null。 */
 const RANKS = [
   null,
   { index: 1, id: 'associate_researcher', title: '副研究员',
     ifReq: 0, q1Req: 1, q2Req: 0, topReq: 0, projTierReq: 0, projCountReq: 0,
-    masterCap: 4, phdCap: 1, schoolFundYear: 72, maxProjectTier: 2, concurrentCap: 2,
+    masterCap: 4, phdCap: 1, schoolFundYear: 72, maxProjectTier: 2, concurrentCap: 2, playerLeadCap: 1,
     goldenAge: null, note: 'SPEC 起始头衔；q1Req=1 为初始持有量，非门槛' },
   { index: 2, id: 'researcher', title: '研究员',
     ifReq: 30, q1Req: 2, q2Req: 2, topReq: 0, projTierReq: 1, projCountReq: 1,
-    masterCap: 5, phdCap: 2, schoolFundYear: 120, maxProjectTier: 3, concurrentCap: 3,
+    masterCap: 5, phdCap: 2, schoolFundYear: 120, maxProjectTier: 3, concurrentCap: 3, playerLeadCap: 2,
     goldenAge: 36, note: 'BALANCE §18.10：项目要求 T1+×1' },
   { index: 3, id: 'associate_professor', title: '副教授',
     ifReq: 80, q1Req: 3, q2Req: 4, topReq: 0, projTierReq: 2, projCountReq: 1,
-    masterCap: 6, phdCap: 2, schoolFundYear: 180, maxProjectTier: 4, concurrentCap: 3,
+    masterCap: 6, phdCap: 2, schoolFundYear: 180, maxProjectTier: 4, concurrentCap: 3, playerLeadCap: 2,
     goldenAge: 38, note: 'BALANCE §18.10：q2 5→4、项目要求 T2+×1' },
   { index: 4, id: 'professor', title: '教授',
     ifReq: 180, q1Req: 5, q2Req: 8, topReq: 0, projTierReq: 3, projCountReq: 1,
-    masterCap: 8, phdCap: 3, schoolFundYear: 240, maxProjectTier: 5, concurrentCap: 4,
+    masterCap: 8, phdCap: 3, schoolFundYear: 240, maxProjectTier: 5, concurrentCap: 4, playerLeadCap: 3,
     goldenAge: 41, note: 'BALANCE §18.10：q2 10→8、项目要求 T3+×1' },
   { index: 5, id: 'young_talent', title: '优青 / 万人',
     ifReq: 320, q1Req: 7, q2Req: 12, topReq: 1, projTierReq: 4, projCountReq: 1,
-    masterCap: 9, phdCap: 3, schoolFundYear: 320, maxProjectTier: 6, concurrentCap: 4,
+    masterCap: 9, phdCap: 3, schoolFundYear: 320, maxProjectTier: 6, concurrentCap: 4, playerLeadCap: 3,
     goldenAge: 43, note: 'BALANCE §18.10：q2 16→12、top 0→1、项目要求 T4+×1' },
   { index: 6, id: 'distinguished_single', title: '杰青 / 长江（单有）',
     ifReq: 600, q1Req: 9, q2Req: 16, topReq: 1, projTierReq: 5, projCountReq: 1,
-    masterCap: 10, phdCap: 4, schoolFundYear: 420, maxProjectTier: 6, concurrentCap: 5,
+    masterCap: 10, phdCap: 4, schoolFundYear: 420, maxProjectTier: 6, concurrentCap: 5, playerLeadCap: 4,
     goldenAge: 47, note: 'BALANCE §18.10：q2 24→16、项目要求 T5+×1' },
   { index: 7, id: 'distinguished_both', title: '杰青 + 长江（兼有）',
     ifReq: 950, q1Req: 12, q2Req: 22, topReq: 1, projTierReq: 5, projCountReq: 2,
-    masterCap: 12, phdCap: 5, schoolFundYear: 560, maxProjectTier: 6, concurrentCap: 6,
+    masterCap: 12, phdCap: 5, schoolFundYear: 560, maxProjectTier: 6, concurrentCap: 6, playerLeadCap: 4,
     goldenAge: 51, note: 'BALANCE §18.10：q2 34→22、top 2→1、项目要求 T5+×2（原 T6≥1）' },
   { index: 8, id: 'academician', title: '院士',
     ifReq: 1400, q1Req: 16, q2Req: 28, topReq: 3, projTierReq: 6, projCountReq: 1,
     projTierReq2: 5, projCountReq2: 2,
-    masterCap: 15, phdCap: 6, schoolFundYear: 760, maxProjectTier: 6, concurrentCap: 6,
+    masterCap: 15, phdCap: 6, schoolFundYear: 760, maxProjectTier: 6, concurrentCap: 6, playerLeadCap: 4,
     goldenAge: 45, note: 'BALANCE §18.10：q2 44→28、项目要求 T6×1 且 T5+×2（两条子句）；+ ≥3 张推荐票 + 增选窗口 + ≥45 岁' },
 ];
 
@@ -5712,9 +5717,14 @@ function reduceToggleLead(state, payload) {
   const next = cloneState(state);
   const project = next.projects.find((p) => p.instanceId === payload.projectId && p.status === 'active');
   if (!project) return state;
+  // v1.7.0：同时亲带的数量上限由头衔决定（值住在 src/data/ranks.js 的 playerLeadCap），
+  // 不再由精力上限派生。旧档可能已挂超限的亲带项目：**不追溯取消**（取消永远允许），
+  // 但禁止再新增——超限时的 toggle ON 一律拒绝并说明「当前头衔上限 / 已带数量」。
+  const rank = rankOf(next.player.rankIndex);
   const leading = activeProjects(next).filter((p) => p.playerLeading).length;
-  if (!project.playerLeading && leading >= Math.max(1, Math.floor(energyMax(next) / 2))) {
-    next.ui.toast = '精力有限，亲带不了更多项目了。';
+  if (!project.playerLeading && leading >= rank.playerLeadCap) {
+    next.ui.toast = '「' + rank.title + '」最多同时亲带 ' + rank.playerLeadCap + ' 个项目（随头衔提升）；你已亲带 '
+      + leading + ' 个，先取消一个再带。';
     return next;
   }
   project.playerLeading = !project.playerLeading;
@@ -6998,6 +7008,24 @@ function selectProjects(state) {
   return state.projects.map((p) => selectProjectRow(state, p));
 }
 
+/**
+ * 亲带并发状态（v1.7.0）：**上限由头衔决定**，值住在 src/data/ranks.js 的 playerLeadCap。
+ * UI 只用这份快照渲染「已亲带 N / 上限 M」和超限提示，不自己算上限、也不写死数字。
+ * over=true 表示旧档遗留的超限状态（引擎不追溯取消，但拒绝再新增）。
+ */
+function selectPlayerLead(state) {
+  const rank = rankOf(state.player.rankIndex);
+  const count = activeProjects(state).filter((p) => p.playerLeading).length;
+  return {
+    cap: rank.playerLeadCap,
+    count,
+    over: count > rank.playerLeadCap,
+    canAdd: count < rank.playerLeadCap,
+    rankIndex: rank.index,
+    rankTitle: rank.title,
+  };
+}
+
 function selectEquipment(state) {
   return INSTRUMENTS.map((def) => {
     const owned = state.lab.equipment[def.id] || 0;
@@ -7206,7 +7234,7 @@ function selectMarket(state) {
  * 展示常量透传（t5 验收：UI 不许硬编码任何数值，数字统一从 core 取）。
  * 纯查表，无计算逻辑。
  */
-function selectUiConstants() {
+function selectUiConstants(state) {
   return {
     actions: ACTION_DEFS.map((a) => ({
       id: a.id, name: a.name, hint: a.hint, energyCost: a.energyCost, moneyCost: a.moneyCost, limitPerMonth: a.limitPerMonth,
@@ -7267,7 +7295,7 @@ function selectUiConstants() {
     },
     integrity: { ...INTEGRITY_DELTA },
     /** v1.5.0 游戏内百科（10 章）：数据表在此从 src/data 组装，UI 只渲染 */
-    wiki: selectWiki(),
+    wiki: selectWiki(state),
   };
 }
 
@@ -7341,10 +7369,12 @@ const WIKI_INTEGRITY_ROWS = [
   ['giveUpStudent', '学生肄业离组'],
 ];
 
-function selectWiki() {
+function selectWiki(state) {
   const ranks = RANKS.filter(Boolean);
   const firstRank = ranks[0];
   const lastRank = ranks[ranks.length - 1];
+  // v1.7.0：亲带上限随头衔走，词条里的 N 必须是**玩家当前头衔**的真实值（不写死）。
+  const leadRank = rankOf(state.player.rankIndex);
   const chapters = [];
 
   /* ── 第 1 章：经费来源 ── */
@@ -7405,6 +7435,7 @@ function selectWiki() {
       + ' · 名额 硕 ' + r.masterCap + '/博 ' + r.phdCap
       + ' · 校投 ' + wikiMoneyOf(r.schoolFundYear) + '/年'
       + ' · 在研上限 ' + r.concurrentCap + ' 项 · 最高 T' + r.maxProjectTier
+      + ' · 亲带上限 ' + r.playerLeadCap + ' 项'
       + (r.goldenAge ? ' · 黄金年龄 ≤ ' + r.goldenAge + ' 岁' : ''))).concat([
       wikiRowOf('rank.promoteIntegrity', '晋升奖励', '诚信 ' + wikiDeltaOf(PROMOTE_INTEGRITY_BONUS)),
       wikiRowOf('rank.academician.age', '院士：年龄门槛', '≥ ' + MIN_ACADEMICIAN_AGE + ' 岁'),
@@ -7423,7 +7454,10 @@ function selectWiki() {
     title: '一作三途径',
     intro: '晋升门槛数的是「你署名一作」的那几篇，全组论文再多也只算总影响因子。拿一作只有三条路。',
     rows: [
-      wikiRowOf('firstAuthor.lead', '亲带（项目卡片「我亲自带」）', '项目推进 ' + wikiMulOf(PLAYER_LEAD_MUL) + ' · 每月多 ' + wikiTrim(PLAYER_LEAD_ENERGY_COST) + ' 点精力', '这个项目的论文一作全部归你'),
+      wikiRowOf('firstAuthor.lead', '亲带（项目卡片「我亲自带」）', '项目推进 ' + wikiMulOf(PLAYER_LEAD_MUL)
+        + ' · 每月多 ' + wikiTrim(PLAYER_LEAD_ENERGY_COST) + ' 点精力'
+        + ' · 同时最多 ' + leadRank.playerLeadCap + ' 个（随头衔提升；你当前是「' + leadRank.title + '」）',
+      '这个项目的论文一作全部归你'),
       wikiRowOf('firstAuthor.grab', '抢学生的一作', '诚信 ' + wikiDeltaOf(INTEGRITY_DELTA.grabFirst) + ' · 该生幸福 ' + wikiDeltaOf(GRAB_FIRST_HAPPY), '心结 ' + GRAB_GRUDGE_MONTHS + ' 个月，每月该生幸福 ' + wikiDeltaOf(GRUDGE_HAPPY_PER_MONTH) + '；一篇只能抢一次，一个人一个月只能抢一篇'),
       wikiRowOf('firstAuthor.buyIntegrity', '买一作的代价', '诚信 ' + wikiDeltaOf(INTEGRITY_DELTA.buyFirst), '花钱买署名，没有真实产出'),
       wikiRowOf('firstAuthor.drought', '一作空窗提醒', '距上次本人一作 ≥ ' + FIRST_AUTHOR_DROUGHT_MONTHS + ' 个月', '顶栏会提示你该弄一篇了；卡在' + firstRank.title + '时这条最要命'),
@@ -7758,11 +7792,16 @@ function buildViewModel(state) {
       achievements: selectAchievements(state),
       rank: selectRankInfo(state),
     },
-    projects: { list: selectProjects(state).filter((p) => p.status === 'active'), archive: selectProjects(state).filter((p) => p.status !== 'active') },
+    projects: {
+      list: selectProjects(state).filter((p) => p.status === 'active'),
+      archive: selectProjects(state).filter((p) => p.status !== 'active'),
+      // v1.7.0：亲带并发上限/已带数量/是否超限（上限由头衔决定，见 selectors.selectPlayerLead）
+      lead: selectPlayerLead(state),
+    },
     market: selectMarket(state),
     actions: selectActions(state),
     autoAssign: selectAutoAssign(state),
-    consts: selectUiConstants(),
+    consts: selectUiConstants(state),
     receipt: selectReceipt(state),
     chronicle: selectChronicle(state),
     pendingEvent: selectPendingEvent(state),
@@ -8060,6 +8099,16 @@ const UI_LEAD = {
   titleOff: '你亲带的项目，论文一作全部归你；代价：该项目推进 ×0.85、每月多消耗 1 点精力',
   titleOn: '正在亲带：论文一作全部归你；代价：该项目推进 ×0.85、每月多 1 点精力。再点一次取消亲带',
   note: '亲带＝这个项目的论文一作全部归你（晋升门槛按你的一作算）· 该项目推进 ×0.85 · 每月多 1 点精力',
+};
+
+/**
+ * v1.7.0：旧档「亲带超限」提示（上限改为按头衔后，老存档可能挂着超过上限的亲带项目）。
+ * 口径：不追溯取消（取消永远允许），但不能再新增。数字全部由 vm.projects.lead 填进来，UI 不写死上限。
+ */
+const UI_LEAD_OVER = {
+  title: '亲带已超出当前头衔的上限',
+  text: '你当前是「{rank}」，同时最多亲带 {cap} 个项目；现在挂着 {count} 个。超出的项目照旧有效（不追溯取消），但不能再新增——先取消一个，再带新的。',
+  dismiss: '知道了',
 };
 
 /** 帮助弹层：新玩家第一次打开就能看懂「现在该做什么」。 */
@@ -10422,6 +10471,8 @@ function createApp(options) {
     rareConfirm: null,
     // 首次进项目页的一次性引导（t34，DEV §7.4 第 5 条）：同样只存本地状态
     projectsIntroDone: false,
+    // v1.7.0 旧档亲带超限提示的「已读」签名（超限解除后自动清空，下次再超限会重新提示）
+    leadOverAck: null,
     // 1.1 实验室空间：手上拿着的仪器（{mode:'buy'|'move', id, uid, name, w, h, rot, price, refund}），只存本地
     labPick: null,
   };
@@ -10458,6 +10509,8 @@ function createApp(options) {
     'auto-assign': () => dispatch('game/autoAssign', {}),
     // 首次进项目页的引导：点掉就记在本地（不写 state，重开一局不影响）
     'projects-intro-dismiss': () => { localUi.projectsIntroDone = true; render(); },
+    // v1.7.0：旧档亲带超限提示同样只记本地状态（不写 state，也不改任何亲带项目）
+    'lead-over-dismiss': (el) => { localUi.leadOverAck = el && el.dataset ? el.dataset.leadKey : null; render(); },
     'help': () => openModal('help'),
     'modal-close': () => openModal(null),
     'receipt-open': () => openModal('receipt'),
@@ -10835,6 +10888,29 @@ function createApp(options) {
     ]);
   }
 
+  /**
+   * v1.7.0：旧档「亲带超限」提示（上限改为按头衔后，老存档可能挂着超限的亲带项目）。
+   * 口径与 core 一致：不追溯取消（取消永远允许），但不能再新增。
+   * 可关掉——只记 localUi；超限解除（over=false）时清空已读签名，下次再超限会重新提示。
+   */
+  function uiLeadOverNotice(vm) {
+    const lead = vm.projects ? vm.projects.lead : null;
+    if (!lead) return null;
+    if (!lead.over) { localUi.leadOverAck = null; return null; }
+    const key = lead.rankIndex + '/' + lead.cap + '/' + lead.count;
+    if (localUi.leadOverAck === key) return null;
+    return h('section', { class: 'projects-intro lead-over', dataset: { role: 'lead-over' } }, [
+      h('div', { class: 'projects-intro-head' }, [
+        h('strong', { class: 'projects-intro-title', text: UI_LEAD_OVER.title }),
+        button(UI_LEAD_OVER.dismiss, { action: 'lead-over-dismiss', leadKey: key }, { class: 'btn-ghost btn-xs' }),
+      ]),
+      h('p', {
+        class: 'projects-intro-text',
+        text: UI_LEAD_OVER.text.replace('{rank}', lead.rankTitle).replace('{cap}', String(lead.cap)).replace('{count}', String(lead.count)),
+      }),
+    ]);
+  }
+
   function renderPanels(vm) {
     for (const tab of Object.keys(UI_PANEL_IDS)) {
       const panel = $(UI_PANEL_IDS[tab]);
@@ -10846,8 +10922,15 @@ function createApp(options) {
       const renderer = UI_RENDERERS[tab];
       if (renderer) {
         const nodes = renderer(vm, localUi) || [];
+        const extras = [];
         // 项目页第一次打开时，先把「晋升看你本人的一作」摊在最上面（点掉就不再出现）
-        mount(panel, tab === 'projects' && !localUi.projectsIntroDone ? [uiProjectsIntro()].concat(nodes) : nodes);
+        if (tab === 'projects' && !localUi.projectsIntroDone) extras.push(uiProjectsIntro());
+        // v1.7.0：旧档亲带超限提示（同样只存本地状态、可关掉；取消亲带不受上限约束）
+        if (tab === 'projects') {
+          const over = uiLeadOverNotice(vm);
+          if (over) extras.push(over);
+        }
+        mount(panel, extras.length ? extras.concat(nodes) : nodes);
       } else clear(panel);
     }
   }

@@ -20,7 +20,7 @@ import { renderActions } from './views/actions.js';
 import { renderChronicleAside, renderChroniclePanel } from './views/chronicle.js';
 import { renderModal, renderToast, uiRenameValues } from './modal.js';
 import { renderReceiptStrip } from './receipt.js';
-import { UI_TAB_IDS, UI_PANEL_IDS, UI_PROJECTS_INTRO } from './copy.js';
+import { UI_TAB_IDS, UI_PANEL_IDS, UI_PROJECTS_INTRO, UI_LEAD_OVER } from './copy.js';
 
 /** 标签页图标（t27：全部是内联 SVG，来源与许可证见 docs/ASSETS.md）。 */
 const UI_TAB_ICONS = {
@@ -72,6 +72,8 @@ export function createApp(options) {
     rareConfirm: null,
     // 首次进项目页的一次性引导（t34，DEV §7.4 第 5 条）：同样只存本地状态
     projectsIntroDone: false,
+    // v1.7.0 旧档亲带超限提示的「已读」签名（超限解除后自动清空，下次再超限会重新提示）
+    leadOverAck: null,
     // 1.1 实验室空间：手上拿着的仪器（{mode:'buy'|'move', id, uid, name, w, h, rot, price, refund}），只存本地
     labPick: null,
   };
@@ -108,6 +110,8 @@ export function createApp(options) {
     'auto-assign': () => dispatch('game/autoAssign', {}),
     // 首次进项目页的引导：点掉就记在本地（不写 state，重开一局不影响）
     'projects-intro-dismiss': () => { localUi.projectsIntroDone = true; render(); },
+    // v1.7.0：旧档亲带超限提示同样只记本地状态（不写 state，也不改任何亲带项目）
+    'lead-over-dismiss': (el) => { localUi.leadOverAck = el && el.dataset ? el.dataset.leadKey : null; render(); },
     'help': () => openModal('help'),
     'modal-close': () => openModal(null),
     'receipt-open': () => openModal('receipt'),
@@ -485,6 +489,29 @@ export function createApp(options) {
     ]);
   }
 
+  /**
+   * v1.7.0：旧档「亲带超限」提示（上限改为按头衔后，老存档可能挂着超限的亲带项目）。
+   * 口径与 core 一致：不追溯取消（取消永远允许），但不能再新增。
+   * 可关掉——只记 localUi；超限解除（over=false）时清空已读签名，下次再超限会重新提示。
+   */
+  function uiLeadOverNotice(vm) {
+    const lead = vm.projects ? vm.projects.lead : null;
+    if (!lead) return null;
+    if (!lead.over) { localUi.leadOverAck = null; return null; }
+    const key = lead.rankIndex + '/' + lead.cap + '/' + lead.count;
+    if (localUi.leadOverAck === key) return null;
+    return h('section', { class: 'projects-intro lead-over', dataset: { role: 'lead-over' } }, [
+      h('div', { class: 'projects-intro-head' }, [
+        h('strong', { class: 'projects-intro-title', text: UI_LEAD_OVER.title }),
+        button(UI_LEAD_OVER.dismiss, { action: 'lead-over-dismiss', leadKey: key }, { class: 'btn-ghost btn-xs' }),
+      ]),
+      h('p', {
+        class: 'projects-intro-text',
+        text: UI_LEAD_OVER.text.replace('{rank}', lead.rankTitle).replace('{cap}', String(lead.cap)).replace('{count}', String(lead.count)),
+      }),
+    ]);
+  }
+
   function renderPanels(vm) {
     for (const tab of Object.keys(UI_PANEL_IDS)) {
       const panel = $(UI_PANEL_IDS[tab]);
@@ -496,8 +523,15 @@ export function createApp(options) {
       const renderer = UI_RENDERERS[tab];
       if (renderer) {
         const nodes = renderer(vm, localUi) || [];
+        const extras = [];
         // 项目页第一次打开时，先把「晋升看你本人的一作」摊在最上面（点掉就不再出现）
-        mount(panel, tab === 'projects' && !localUi.projectsIntroDone ? [uiProjectsIntro()].concat(nodes) : nodes);
+        if (tab === 'projects' && !localUi.projectsIntroDone) extras.push(uiProjectsIntro());
+        // v1.7.0：旧档亲带超限提示（同样只存本地状态、可关掉；取消亲带不受上限约束）
+        if (tab === 'projects') {
+          const over = uiLeadOverNotice(vm);
+          if (over) extras.push(over);
+        }
+        mount(panel, extras.length ? extras.concat(nodes) : nodes);
       } else clear(panel);
     }
   }

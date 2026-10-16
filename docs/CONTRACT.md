@@ -417,10 +417,12 @@ GIVEUP_* DEGREE_KIND DEGREE_LABELS
     // viewmodel.js
     buildViewModel(state) -> { hud, tabs, tab, crew, projects, market, actions, chronicle,
                               consts, receipt, pendingEvent, pendingDefer, ending, toast, canAdvance }
-    //   consts      = selectUiConstants()（UI 展示用的常量透传：UI 不许硬编码任何数值）
+    //   consts      = selectUiConstants(state)（UI 展示用的常量透传：UI 不许硬编码任何数值）
     //   receipt     = selectReceipt(state)（上月结算回执，UI 月报的唯一数据源）
     //   pendingDefer= selectPendingDefer(state)（等玩家拍板的延毕决定；非空时 canAdvance 必为 false）
     //   canAdvance  = phase==='action' && 无 pendingEvent && 无 ending && pendingDefer.length===0
+    //   projects.lead = selectPlayerLead(state)（v1.7.0：亲带并发上限 cap / 已带 count / 是否超限 over；
+    //                   上限来自 src/data/ranks.js 的 playerLeadCap，UI 只渲染不写死）
     buildHud(state) -> { time, rank, ageText, phase, money, consumable, energy, energyMax, health,
                         integrity, achievements, slots, tickets, canAdvance, election }
     TABS -> [{id:'lab'|'projects'|'market'|'actions'|'chronicle', label}]
@@ -430,6 +432,7 @@ GIVEUP_* DEGREE_KIND DEGREE_LABELS
     selectTime selectPhase selectRankInfo selectAchievements selectSlots
     selectStudents selectActiveStudents selectStudentRow
     selectProjects selectProjectRow selectHardpoint
+    selectPlayerLead(state) -> { cap, count, over, canAdd, rankIndex, rankTitle }   // v1.7.0 亲带并发上限（按头衔）
     selectEquipment selectLab
     selectMarket -> { open, openText, slots:{used,cap}, projects:[...], students:[...] }   // cap = MARKET_SLOTS(8)
     selectActions -> { energy, energyMax, money, consumable, consumableLow, buyPack, buyPackCost,
@@ -453,8 +456,9 @@ GIVEUP_* DEGREE_KIND DEGREE_LABELS
     selectChronicle(state, limit?) selectPendingEvent(state) selectEnding(state) selectElection(state)
     selectPendingDefer(state) -> StudentRow[]      // 延毕待决名单（行包装；判定在 engine.pendingDeferStudents）
     selectReceipt(state) -> Receipt|null           // state.stats.lastReceipt 的深拷贝（无回执时为 null）
-    selectUiConstants() -> { actions, hardpoints, papers, limits, defer, consumable, consumeModes,
-                             market, integrity }  // 常量透传表，见实现 selectors.js selectUiConstants
+    selectUiConstants(state) -> { actions, hardpoints, papers, limits, defer, deferByBoss, consumable, consumeModes,
+                             market, integrity, wiki }  // 常量透传表，见实现 selectors.js selectUiConstants
+                             //   需要 state 是因为 wiki 里的「亲带上限 N」必须取玩家当前头衔的真实值
     GRADE_LABELS PAPER_TIER_LABELS PROJECT_MAP WAGE hireCost（模块级导出，UI 可直接 import）
 
     // selectHardpoint(state, project, hp) 的返回（难点按钮要显示成功率与抽调名单，公式只有 core 有）

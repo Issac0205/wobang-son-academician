@@ -21,7 +21,8 @@ import { INTEGRITY_DELTA, INTEGRITY_MIN, INTEGRITY_MAX, INITIAL_INTEGRITY, INITI
 import { GRAB_FIRST_HAPPY, PAPER_BUY_PRICE, JOURNAL_IF_BASE } from '../src/data/papers.js';
 import { PLAYER_LEAD_MUL, PLAYER_LEAD_ENERGY_COST, PROJECT_MAX_STUDENTS, MAX_PROJECTS_PER_STUDENT } from '../src/data/hardpoints.js';
 import { DEPOSIT_RATE } from '../src/data/projects.js';
-import { MIN_ACADEMICIAN_AGE, RECOMMEND_TICKET_REQ, TICKET_VISIT_COST } from '../src/data/ranks.js';
+import { RANKS, MIN_ACADEMICIAN_AGE, RECOMMEND_TICKET_REQ, TICKET_VISIT_COST } from '../src/data/ranks.js';
+import { createProject } from '../src/core/state.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const checks = [];
@@ -759,8 +760,14 @@ try {
      * 这条断言（以及 §12 的抢一作断言）变红；改回 −8 → 回绿。 */
     {
       /* §15 之后可能还挂着一个结局弹层（结局优先级高于本地弹层）：先回到干净的一局 */
+      let wikiCap = RANKS[1].playerLeadCap;
+      let wikiRankTitle = RANKS[1].title;
       if (typeof game.createState === 'function') {
-        replaceState(game.createState({ seed: 'ui-smoke-wiki', playerName: '马老板', sonName: '马小程' }));
+        const wikiState = game.createState({ seed: 'ui-smoke-wiki', playerName: '马老板', sonName: '马小程' });
+        replaceState(wikiState);
+        // v1.7.0：百科「亲带」词条里的 N 取玩家当前头衔的真实上限（不是写死的常数）
+        wikiCap = RANKS[wikiState.player.rankIndex].playerLeadCap;
+        wikiRankTitle = RANKS[wikiState.player.rankIndex].title;
       }
       const helpOpened = clickAction('help');
       check(Boolean(helpOpened) && textOf($('modal-root')).indexOf('游戏内百科') >= 0,
@@ -801,7 +808,8 @@ try {
         ['money.depositNation', Math.round(DEPOSIT_RATE.nation * 100) + '%'],
         ['money.depositEnterprise', Math.round(DEPOSIT_RATE.enterprise * 100) + '%'],
         ['money.consumableUnit', CONSUMABLE_PRICE_PER_UNIT + ' 单位 = ' + CONSUMABLE_PRICE_PER_UNIT + ' 万'],
-        ['firstAuthor.lead', '项目推进 ×' + PLAYER_LEAD_MUL + ' · 每月多 ' + PLAYER_LEAD_ENERGY_COST + ' 点精力'],
+        ['firstAuthor.lead', '项目推进 ×' + PLAYER_LEAD_MUL + ' · 每月多 ' + PLAYER_LEAD_ENERGY_COST + ' 点精力'
+          + ' · 同时最多 ' + wikiCap + ' 个（随头衔提升；你当前是「' + wikiRankTitle + '」）'],
         ['firstAuthor.grab', '诚信 ' + delta(INTEGRITY_DELTA.grabFirst) + ' · 该生幸福 ' + delta(GRAB_FIRST_HAPPY)],
         ['firstAuthor.buy.q1', PAPER_BUY_PRICE.q1 + ' 万'],
         ['firstAuthor.buy.top', PAPER_BUY_PRICE.top + ' 万'],
@@ -840,6 +848,7 @@ try {
         'money.depositNation': '30%',
         'money.depositEnterprise': '40%',
         'money.consumableUnit': '1 单位 = 1 万',
+        'firstAuthor.lead': '项目推进 ×0.85 · 每月多 1 点精力 · 同时最多 1 个（随头衔提升；你当前是「副研究员」）',
         'firstAuthor.grab': '诚信 −8 · 该生幸福 −30',
         'firstAuthor.buy.q1': '25 万',
         'firstAuthor.buy.top': '120 万',
@@ -880,6 +889,85 @@ try {
 
       clickAction('modal-close');
       check(textOf($('modal-root')).length === 0, '百科弹层能正常关掉', '百科弹层关不掉');
+
+      /* 19b（v1.7.0）亲带上限随头衔：同一条词条在 rank1/3/4/8 下必须给出各自的上限（不是写死的常数） */
+      {
+        const rankCapBad = [];
+        for (const idx of [1, 3, 4, 8]) {
+          const st = clone(store.getState());
+          st.player.rankIndex = idx;
+          replaceState(st);
+          clickAction('help');
+          let row = null;
+          walk($('modal-root'), (n) => { if (n.dataset && n.dataset.wikiKey === 'firstAuthor.lead') row = n; });
+          const got = row
+            ? (row.children || []).filter((c) => String(c.className || '').split(' ').includes('wiki-v')).map((c) => String(c.textContent || ''))[0]
+            : null;
+          const want = '项目推进 ×' + PLAYER_LEAD_MUL + ' · 每月多 ' + PLAYER_LEAD_ENERGY_COST + ' 点精力'
+            + ' · 同时最多 ' + RANKS[idx].playerLeadCap + ' 个（随头衔提升；你当前是「' + RANKS[idx].title + '」）';
+          if (got !== want) rankCapBad.push('rank' + idx + ' 页面=' + got + ' core=' + want);
+          clickAction('modal-close');
+        }
+        check(rankCapBad.length === 0,
+          '百科「亲带」词条的上限随当前头衔取真实值（rank1/3/4/8 实测 = '
+            + [1, 3, 4, 8].map((i) => RANKS[i].playerLeadCap).join('/') + '）',
+          rankCapBad.join('；'));
+      }
+    }
+
+    /* ── 20 亲带并发上限（v1.7.0）：旧档超限不追溯取消、仍显示「亲带中」、不能再新增、提示可关掉 ── */
+    {
+      const st = clone(game.createState({ seed: 'ui-smoke-lead-cap', playerName: '马老板', sonName: '马小程' }));
+      st.player.rankIndex = 3;                       // 副教授：上限 2（旧实现按精力会放到更多）
+      const cap = RANKS[3].playerLeadCap;
+      st.projects = [];
+      for (let k = 0; k < 4; k += 1) {               // 旧档形态：副教授挂着 4 个亲带
+        st.projects.push(createProject({
+          instanceId: 'legacy' + k, defId: 'E1', name: '旧档亲带项目 ' + (k + 1), category: 'enterprise',
+          tier: 1, workload: 100, progress: 0, money: 20, deadlineMonthIndex: 999, playerLeading: true,
+        }));
+      }
+      st.projects.push(createProject({
+        instanceId: 'spare', defId: 'E1', name: '待亲带项目', category: 'enterprise',
+        tier: 1, workload: 100, progress: 0, money: 20, deadlineMonthIndex: 999, playerLeading: false,
+      }));
+      st.ui.tab = 'projects';
+      replaceState(clone(st));
+
+      const findNotice = () => {
+        let hit = null;
+        walk($('panel-projects'), (n) => { if (n.dataset && n.dataset.role === 'lead-over') hit = n; });
+        return hit;
+      };
+      const ledTagCount = () => (panelText('panel-projects').match(/亲带中/g) || []).length;
+      const ledNow = () => store.getState().projects.filter((p) => p.playerLeading).length;
+      const leadBtnOf = (id) => findAllByAction($('panel-projects'), 'toggle-lead').filter((b) => b.dataset.projectId === id)[0];
+
+      const notice = findNotice();
+      check(ledTagCount() === 4 && Boolean(notice),
+        '旧档超限：4 个亲带项目仍显示「亲带中」，项目页给出提示（不被追溯取消）',
+        '亲带标签 ' + ledTagCount() + ' 个、超限提示 ' + (notice ? '有' : '没有'));
+      check(Boolean(notice) && textOf(notice).indexOf(String(cap)) >= 0 && textOf(notice).indexOf('4') >= 0,
+        '提示写明「当前头衔上限 ' + cap + ' / 已带 4 个」：' + (notice ? textOf(notice).slice(0, 40) : '（无提示）'),
+        '提示没有写清上限与已带数量');
+
+      const spareBtn = leadBtnOf('spare');
+      if (spareBtn) spareBtn.click();
+      check(ledNow() === 4, '超限时新增亲带被引擎拒绝：已亲带数量不变（仍是 4）', '超限竟然还能新增：已亲带 ' + ledNow() + ' 个');
+      check(panelText('toast-root').indexOf('最多同时亲带 ' + cap) >= 0 && panelText('toast-root').indexOf('你已亲带 4') >= 0,
+        '拒绝时弹出中文 toast，说明当前头衔上限与已带数量：' + panelText('toast-root').slice(0, 48),
+        'toast 没说明上限/已带数量：' + panelText('toast-root'));
+
+      const ledBtn = leadBtnOf('legacy0');
+      if (ledBtn) ledBtn.click();
+      check(ledNow() === 3, '超限旧档：取消亲带照常生效（取消不受上限约束）', '取消亲带被上限挡住了：已亲带 ' + ledNow() + ' 个');
+
+      replaceState(clone(st));                       // 回到超限状态，验证提示可以关掉
+      check(Boolean(findNotice()), '回到超限状态后提示再次出现（关提示不写 state，超限未解除就还会提示）');
+      const dismiss = findByAction($('panel-projects'), 'lead-over-dismiss');
+      if (dismiss) dismiss.click();
+      check(!findNotice(), '超限提示可以关掉（点一下就不再占位）', '提示关不掉');
+      check(ledTagCount() === 4, '关掉提示后 4 个项目仍显示「亲带中」（提示不改变任何亲带状态）', '亲带标签数变了：' + ledTagCount());
     }
   }
 } catch (err) {

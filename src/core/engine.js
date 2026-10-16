@@ -1625,9 +1625,14 @@ function reduceToggleLead(state, payload) {
   const next = cloneState(state);
   const project = next.projects.find((p) => p.instanceId === payload.projectId && p.status === 'active');
   if (!project) return state;
+  // v1.7.0：同时亲带的数量上限由头衔决定（值住在 src/data/ranks.js 的 playerLeadCap），
+  // 不再由精力上限派生。旧档可能已挂超限的亲带项目：**不追溯取消**（取消永远允许），
+  // 但禁止再新增——超限时的 toggle ON 一律拒绝并说明「当前头衔上限 / 已带数量」。
+  const rank = rankOf(next.player.rankIndex);
   const leading = activeProjects(next).filter((p) => p.playerLeading).length;
-  if (!project.playerLeading && leading >= Math.max(1, Math.floor(energyMax(next) / 2))) {
-    next.ui.toast = '精力有限，亲带不了更多项目了。';
+  if (!project.playerLeading && leading >= rank.playerLeadCap) {
+    next.ui.toast = '「' + rank.title + '」最多同时亲带 ' + rank.playerLeadCap + ' 个项目（随头衔提升）；你已亲带 '
+      + leading + ' 个，先取消一个再带。';
     return next;
   }
   project.playerLeading = !project.playerLeading;

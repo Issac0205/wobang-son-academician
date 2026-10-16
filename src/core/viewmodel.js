@@ -9,6 +9,7 @@ import {
   selectTime, selectPhase, selectRankInfo, selectAchievements, selectSlots, selectStudents,
   selectProjects, selectLab, selectMarket, selectActions, selectChronicle, selectPendingEvent,
   selectEnding, selectElection, selectReceipt, selectUiConstants, selectPendingDefer, selectAutoAssign, selectFirstAuthorDrought,
+  selectPlayerLead,
 } from './selectors.js';
 
 /** 标签页顺序即 UI 渲染顺序（与 index.html 的 data-tab 一一对应）。 */
@@ -69,11 +70,16 @@ export function buildViewModel(state) {
       achievements: selectAchievements(state),
       rank: selectRankInfo(state),
     },
-    projects: { list: selectProjects(state).filter((p) => p.status === 'active'), archive: selectProjects(state).filter((p) => p.status !== 'active') },
+    projects: {
+      list: selectProjects(state).filter((p) => p.status === 'active'),
+      archive: selectProjects(state).filter((p) => p.status !== 'active'),
+      // v1.7.0：亲带并发上限/已带数量/是否超限（上限由头衔决定，见 selectors.selectPlayerLead）
+      lead: selectPlayerLead(state),
+    },
     market: selectMarket(state),
     actions: selectActions(state),
     autoAssign: selectAutoAssign(state),
-    consts: selectUiConstants(),
+    consts: selectUiConstants(state),
     receipt: selectReceipt(state),
     chronicle: selectChronicle(state),
     pendingEvent: selectPendingEvent(state),

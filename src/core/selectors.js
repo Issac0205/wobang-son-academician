@@ -52,6 +52,7 @@ import {
   rankStatus, equipmentBonus, equipmentBonusSum, maintenanceTotal, wageCost, instrumentPrice, projectProgressPct, openHardpointCount,
   projectTail, energyMax, hireCost, expectedWageTier,
   teamSuccessChance, soloSuccessChance, fakeCatchChance, retryBonus, firstAuthorDrought, schoolFundMonthly,
+  activeProjects,
 } from './formulas.js';
 // core 内部的常量复用（engine 不 import selectors，因此无循环依赖）
 import { TALK_PER_STUDENT_PER_MONTH, pendingDeferStudents, grabbedPaperThisMonth, autoAssignPlan } from './engine.js';
@@ -257,6 +258,24 @@ export function selectProjectRow(state, project) {
 
 export function selectProjects(state) {
   return state.projects.map((p) => selectProjectRow(state, p));
+}
+
+/**
+ * 亲带并发状态（v1.7.0）：**上限由头衔决定**，值住在 src/data/ranks.js 的 playerLeadCap。
+ * UI 只用这份快照渲染「已亲带 N / 上限 M」和超限提示，不自己算上限、也不写死数字。
+ * over=true 表示旧档遗留的超限状态（引擎不追溯取消，但拒绝再新增）。
+ */
+export function selectPlayerLead(state) {
+  const rank = rankOf(state.player.rankIndex);
+  const count = activeProjects(state).filter((p) => p.playerLeading).length;
+  return {
+    cap: rank.playerLeadCap,
+    count,
+    over: count > rank.playerLeadCap,
+    canAdd: count < rank.playerLeadCap,
+    rankIndex: rank.index,
+    rankTitle: rank.title,
+  };
 }
 
 export function selectEquipment(state) {
@@ -467,7 +486,7 @@ export function selectMarket(state) {
  * 展示常量透传（t5 验收：UI 不许硬编码任何数值，数字统一从 core 取）。
  * 纯查表，无计算逻辑。
  */
-export function selectUiConstants() {
+export function selectUiConstants(state) {
   return {
     actions: ACTION_DEFS.map((a) => ({
       id: a.id, name: a.name, hint: a.hint, energyCost: a.energyCost, moneyCost: a.moneyCost, limitPerMonth: a.limitPerMonth,
@@ -528,7 +547,7 @@ export function selectUiConstants() {
     },
     integrity: { ...INTEGRITY_DELTA },
     /** v1.5.0 游戏内百科（10 章）：数据表在此从 src/data 组装，UI 只渲染 */
-    wiki: selectWiki(),
+    wiki: selectWiki(state),
   };
 }
 
@@ -602,10 +621,12 @@ const WIKI_INTEGRITY_ROWS = [
   ['giveUpStudent', '学生肄业离组'],
 ];
 
-export function selectWiki() {
+export function selectWiki(state) {
   const ranks = RANKS.filter(Boolean);
   const firstRank = ranks[0];
   const lastRank = ranks[ranks.length - 1];
+  // v1.7.0：亲带上限随头衔走，词条里的 N 必须是**玩家当前头衔**的真实值（不写死）。
+  const leadRank = rankOf(state.player.rankIndex);
   const chapters = [];
 
   /* ── 第 1 章：经费来源 ── */
@@ -666,6 +687,7 @@ export function selectWiki() {
       + ' · 名额 硕 ' + r.masterCap + '/博 ' + r.phdCap
       + ' · 校投 ' + wikiMoneyOf(r.schoolFundYear) + '/年'
       + ' · 在研上限 ' + r.concurrentCap + ' 项 · 最高 T' + r.maxProjectTier
+      + ' · 亲带上限 ' + r.playerLeadCap + ' 项'
       + (r.goldenAge ? ' · 黄金年龄 ≤ ' + r.goldenAge + ' 岁' : ''))).concat([
       wikiRowOf('rank.promoteIntegrity', '晋升奖励', '诚信 ' + wikiDeltaOf(PROMOTE_INTEGRITY_BONUS)),
       wikiRowOf('rank.academician.age', '院士：年龄门槛', '≥ ' + MIN_ACADEMICIAN_AGE + ' 岁'),
@@ -684,7 +706,10 @@ export function selectWiki() {
     title: '一作三途径',
     intro: '晋升门槛数的是「你署名一作」的那几篇，全组论文再多也只算总影响因子。拿一作只有三条路。',
     rows: [
-      wikiRowOf('firstAuthor.lead', '亲带（项目卡片「我亲自带」）', '项目推进 ' + wikiMulOf(PLAYER_LEAD_MUL) + ' · 每月多 ' + wikiTrim(PLAYER_LEAD_ENERGY_COST) + ' 点精力', '这个项目的论文一作全部归你'),
+      wikiRowOf('firstAuthor.lead', '亲带（项目卡片「我亲自带」）', '项目推进 ' + wikiMulOf(PLAYER_LEAD_MUL)
+        + ' · 每月多 ' + wikiTrim(PLAYER_LEAD_ENERGY_COST) + ' 点精力'
+        + ' · 同时最多 ' + leadRank.playerLeadCap + ' 个（随头衔提升；你当前是「' + leadRank.title + '」）',
+      '这个项目的论文一作全部归你'),
       wikiRowOf('firstAuthor.grab', '抢学生的一作', '诚信 ' + wikiDeltaOf(INTEGRITY_DELTA.grabFirst) + ' · 该生幸福 ' + wikiDeltaOf(GRAB_FIRST_HAPPY), '心结 ' + GRAB_GRUDGE_MONTHS + ' 个月，每月该生幸福 ' + wikiDeltaOf(GRUDGE_HAPPY_PER_MONTH) + '；一篇只能抢一次，一个人一个月只能抢一篇'),
       wikiRowOf('firstAuthor.buyIntegrity', '买一作的代价', '诚信 ' + wikiDeltaOf(INTEGRITY_DELTA.buyFirst), '花钱买署名，没有真实产出'),
       wikiRowOf('firstAuthor.drought', '一作空窗提醒', '距上次本人一作 ≥ ' + FIRST_AUTHOR_DROUGHT_MONTHS + ' 个月', '顶栏会提示你该弄一篇了；卡在' + firstRank.title + '时这条最要命'),
