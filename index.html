@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>我帮儿子评院士 · 课题组月度台账</title>
+<meta name="description" content="把马小程从副研究员一路刷成院士的经营养成小游戏：经费、仪器、学生、项目、论文账目，全在这本台账里。" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23b0392c'/%3E%3Ctext x='32' y='45' font-size='40' font-family='serif' text-anchor='middle' fill='%23fffdf7'%3E%E8%AF%84%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="./src/styles/main.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ── 顶栏（粘顶）：身份、资源、操作。全部由 src/ui/hud.js 渲染 ── -->
+  <div id="top-bar">
+    <header id="hud" data-role="hud">
+      <div class="hud-row hud-brand-row">
+        <div class="hud-brand">
+          <span class="brand-mark" aria-hidden="true">评</span>
+          <span class="brand-text">
+            <strong>我帮儿子评院士</strong>
+            <span>课题组月度台账 · 副研究员 → 院士</span>
+          </span>
+        </div>
+        <div class="hud-line hud-identity">
+          <span id="hud-name"></span>
+          <span id="hud-son"></span>
+          <span id="hud-rank"></span>
+          <span id="hud-month"></span>
+          <span id="hud-age"></span>
+          <span id="hud-phase"></span>
+          <span id="hud-election" data-role="election" hidden></span>
+        </div>
+      </div>
+      <div class="hud-row hud-resources">
+        <span id="hud-money"></span>
+        <span id="hud-consumable"></span>
+        <span id="hud-energy"></span>
+        <span id="hud-health"></span>
+        <span id="hud-integrity"></span>
+        <span id="hud-if"></span>
+        <span id="hud-first"></span>
+        <span id="hud-tickets"></span>
+        <span id="hud-students"></span>
+      </div>
+      <div class="hud-row hud-controls">
+        <button type="button" id="btn-next-month" class="btn btn-primary btn-next" data-action="next-month" title="进入月末结算">下一个月 ▶</button>
+        <span class="hud-controls-gap" aria-hidden="true"></span>
+        <button type="button" id="btn-help" class="btn btn-ghost" data-action="help">玩法</button>
+        <button type="button" id="btn-save" class="btn btn-ghost" data-action="save">存档</button>
+        <button type="button" id="btn-export" class="btn btn-ghost" data-action="export">导出存档</button>
+        <button type="button" id="btn-import" class="btn btn-ghost" data-action="import">导入存档</button>
+        <button type="button" id="btn-resign" class="btn btn-ghost" data-action="resign">下海</button>
+        <button type="button" id="btn-reset" class="btn btn-ghost" data-action="reset">重开一局</button>
+      </div>
+    </header>
+
+    <!-- ── 五个标签页：按钮只切 state.ui.tab，视图渲染进对应 panel ── -->
+    <nav id="tabs" data-role="tabs" aria-label="主页面">
+      <button type="button" id="tab-lab" class="tab" data-action="tab" data-tab="lab">课题组</button>
+      <button type="button" id="tab-projects" class="tab" data-action="tab" data-tab="projects">项目</button>
+      <button type="button" id="tab-market" class="tab" data-action="tab" data-tab="market">市场</button>
+      <button type="button" id="tab-actions" class="tab" data-action="tab" data-tab="actions">行动</button>
+      <button type="button" id="tab-chronicle" class="tab" data-action="tab" data-tab="chronicle">纪事</button>
+    </nav>
+  </div>
+
+  <!-- ── 上月结算回执（所有标签页可见，由 src/ui/receipt.js 渲染） ── -->
+  <section id="month-report" data-role="month-report" aria-label="上月结算回执"></section>
+
+  <main id="panels" data-role="panels">
+    <section id="panel-lab" data-role="panel" data-tab="lab"></section>
+    <section id="panel-projects" data-role="panel" data-tab="projects" hidden></section>
+    <section id="panel-market" data-role="panel" data-tab="market" hidden></section>
+    <section id="panel-actions" data-role="panel" data-tab="actions" hidden></section>
+    <section id="panel-chronicle" data-role="panel" data-tab="chronicle" hidden></section>
+  </main>
+
+  <!-- ── 纪事：事件与结算文案流（借鉴 QualityCampus 的「树洞链」） ── -->
+  <aside id="chronicle-wrap" data-role="chronicle">
+    <h2 class="aside-title">纪事</h2>
+    <p class="aside-sub">每月发生的事，core 写、UI 只负责排版</p>
+    <ul id="chronicle-list" data-role="chronicle-list"></ul>
+  </aside>
+
+  <!-- ── 弹层：事件、结局、改名、帮助、结算明细、重开确认都挂在这里 ── -->
+  <div id="modal-root" data-role="modal"></div>
+  <div id="toast-root" data-role="toast"></div>
+
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

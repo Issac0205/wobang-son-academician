@@ -1,0 +1,43 @@
+name: Deploy to GitHub Pages
+
+# ⚠ 本工作流【未经验证】：开发机的 hosts 把 github.com / api.github.com / github.io / pages.github.com
+#   全部指向 127.0.0.1，既推不上去、也无法在本地跑 Actions。首次推送后请到仓库 Actions 页确认它真的跑过。
+#   兜底路径（不依赖 Actions）：仓库里已有 docs/index.html，把 Pages 源选成 main 分支的 /docs 即可。
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 准备站点（把自包含单文件作为索引页）
+        run: |
+          mkdir -p _site
+          cp dist/wobang-son-academician.html _site/index.html
+          ls -l _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

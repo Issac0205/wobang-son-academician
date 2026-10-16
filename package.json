@@ -1,0 +1,20 @@
+{
+  "name": "wobang-son-academician",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "我帮儿子评院士 —— 课题组经营养成小游戏（纯前端 ES Module，零构建依赖）",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "check": "node scripts/check.mjs",
+    "simulate": "node scripts/simulate.mjs",
+    "ui-smoke": "node scripts/ui-smoke.mjs",
+    "build": "node scripts/build-single.mjs",
+    "version": "node scripts/version.mjs",
+    "test": "node scripts/check.mjs && node scripts/simulate.mjs && node scripts/ui-smoke.mjs && node scripts/build-single.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

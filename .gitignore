@@ -1,0 +1,22 @@
+# 依赖（本项目零依赖，仅防误装）
+node_modules/
+# 工具缓存与日志
+.cache/
+*.log
+.DS_Store
+Thumbs.db
+# 编辑器/系统临时文件
+*.tmp
+*.bak
+*.orig
+*~
+.vscode/
+.idea/
+
+# ⚠ 下面两条是「发布物与版本存档必须提交」的显式声明，别把它们加到排除列表里：
+#   dist/     = 当前构建的单文件（离线双击即玩）
+#   versions/ = 每个发布版本的留档（单文件副本 + 一页说明 + PROVENANCE.json）
+!dist/
+!dist/wobang-son-academician.html
+!versions/
+!versions/**
