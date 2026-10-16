@@ -301,6 +301,22 @@ export const UI_DEFER = {
   pendingTag: '待决',
 };
 
+/**
+ * v1.6.0「延毕他」：学生名册上的主动延毕（与到期的「延毕决定」是两件事）。
+ * 点开先走确认弹层，代价写在弹层里；数字全部由 vm.consts.deferByBoss 提供。
+ */
+export const UI_DEFER_BOSS = {
+  button: '延毕他',
+  title: '让他再留一年？',
+  subtitle: '不可撤销 · 他会记恨你',
+  lead: '这不是学制到期的那次延毕决定，是你亲手拍的板。',
+  cost: '幸福度 {happy}、毕业进度 {progress}，他会记恨你。',
+  confirm: '确认延毕',
+  cancel: '算了',
+  // core 没给 vm.consts.deferByBoss 时的兜底：不带数字，但必须说清代价
+  noConsts: '代价由 core 提供：掉他的幸福度、也压他的毕业进度，而且他会记恨你。',
+};
+
 /** 耗材资金的单位说明（t8 finding：把「单位」与「万元」说清楚）。 */
 export const UI_CONSUMABLE_UNIT = {
   note: '耗材资金按万元记：{unit} 单位 = {yuan} 万元（交付、消耗都走这一本账）。',

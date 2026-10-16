@@ -605,6 +605,46 @@ try {
       clearDefer('defer');
     }
 
+    /* ── 12.7 v1.6.0「延毕他」：名册按钮 → 确认弹层（写明代价）→ 确认后数值变化 ── */
+    $('tab-lab').click();
+    if (sub('students')) {
+      sub('students').click();
+      const seeded = clone(store.getState());
+      const target = seeded.students.filter((x) => !x.left && !x.graduated)[0];
+      if (!target) {
+        fail('没有在读学生，无法验证「延毕他」');
+      } else {
+        target.happiness = 60;
+        target.degreeProgress = 40;
+        const studyBefore = target.studyMonthsLeft;
+        const deferBefore = target.deferMonths;
+        replaceState(seeded);
+        const bossBtn = findAllByAction($('panel-lab'), 'defer-boss-open')[0];
+
+        check(Boolean(bossBtn), '学生名册每张在读学生卡都有「延毕他」按钮（' + findAllByAction($('panel-lab'), 'defer-boss-open').length + ' 个）', '名册里没有「延毕他」按钮');
+        if (bossBtn) {
+          const stateBefore = JSON.stringify(store.getState().students);
+          bossBtn.click();
+          const bossModal = textOf($('modal-root'));
+          check(bossModal.indexOf('−20') >= 0 && bossModal.indexOf('−25') >= 0 && bossModal.indexOf('记恨') >= 0,
+            '点「延毕他」先弹确认层，写明代价「幸福度 −20、毕业进度 −25，他会记恨你」', '确认弹层文案缺代价：' + bossModal.slice(0, 80));
+          check(JSON.stringify(store.getState().students) === stateBefore, '确认之前状态一点没动（二次确认真的挡在前面）', '还没确认就改了状态');
+          const bossConfirm = findByAction($('modal-root'), 'defer-boss-confirm');
+          check(Boolean(bossConfirm), '确认弹层提供「确认延毕」按钮', '确认弹层缺少确认按钮');
+          if (bossConfirm) {
+            bossConfirm.click();
+            const afterBoss = store.getState().students.filter((x) => x.id === target.id)[0];
+            check(afterBoss.happiness === 40 && afterBoss.degreeProgress === 15,
+              '确认后 happiness 恰好 −20、degreeProgress 恰好 −25（60 → ' + afterBoss.happiness + '，40 → ' + afterBoss.degreeProgress + '）',
+              '确认后数值不对：' + afterBoss.happiness + ' / ' + afterBoss.degreeProgress);
+            check(afterBoss.studyMonthsLeft === studyBefore && afterBoss.deferMonths === deferBefore,
+              '不带别的副作用：学制与延毕次数原样（' + studyBefore + ' / ' + deferBefore + '）', '动了学制或延毕次数');
+            check(textOf($('modal-root')).length === 0, '确认后弹层关掉', '确认后弹层还开着');
+          }
+        }
+      }
+    }
+
     /* ── 13 toast：core 的失败反馈要能显示并关掉 ── */
     store.dispatch({ type: 'game/buyConsumable', payload: { amount: 99999 } });
     const toastText = textOf($('toast-root'));
@@ -771,6 +811,7 @@ try {
         ['rank.academician.age', '≥ ' + MIN_ACADEMICIAN_AGE + ' 岁'],
         ['rank.academician.ticket', RECOMMEND_TICKET_REQ + ' 张'],
         ['rank.ticket.visit', TICKET_VISIT_COST + ' 万/次'],
+        ['students.deferByBoss', '幸福 −20 · 毕业进度 −25'],
       ];
       const caseBad = coreCases.filter(([k, want]) => valueOf(k) !== want);
       check(caseBad.length === 0, '百科 ' + coreCases.length + ' 条逐项对账通过（页面 == src/data 真值）',

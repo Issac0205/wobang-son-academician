@@ -114,6 +114,10 @@ export const DEFER_MONTHS_SUBTRACT = 12;
 export const DEFER_QUOTA_MASTER = 2;
 export const DEFER_QUOTA_PHD = 3;
 export const DEFER_FREE_QUOTA = true;             // SPEC：延毕生不占招生名额
+/* v1.6.0「延毕他」：老板随时拍板的主动延毕，与「到期后延毕/肄业二选一」是两件事。
+   只有这两个效果（用户点名）；不动 studyMonthsLeft / deferMonths / 诚信。 */
+export const DEFER_BY_BOSS_HAPPY = -20;
+export const DEFER_BY_BOSS_PROGRESS = -25;
 export const GIVEUP_PROGRESS_MUL = 0.40;
 export const GIVEUP_INTEGRITY = -2;
 export const DEGREE_KIND = { master: 'master', phd: 'phd' };

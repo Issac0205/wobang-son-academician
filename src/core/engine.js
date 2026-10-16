@@ -20,7 +20,7 @@ import { footprint, fits, findSpot, findBench, findItem, findEmptySlot, recountE
 import { PROJECTS, PROJECT_MAP, PROJECT_SLOTS, STUDENT_SLOTS, REFRESH_MONTHLY, LOCKABLE_SLOTS, TIER_LOOKAHEAD, PROJECT_OFFER_TTL_MONTHS, STUDENT_OFFER_TTL_MONTHS, MIN_ACCEPTABLE_PROJECT_OFFERS, NATION_PROJECT_RATIO, DEPOSIT_TO_CONSUMABLE, DEPOSIT_RATE, OVERDUE_GRACE_MONTHS, OVERDUE_INTEGRITY_PER_MONTH, OVERDUE_STUDENT_HAPPY, PROJECT_FAIL_INTEGRITY, PROJECT_FAIL_STUDENT_HAPPY } from '../data/projects.js';
 import { PAPER_PATTERNS, PAPER_TIER_ORDER, PAPER_PATTERN_ORDER, GRAB_FIRST_INTEGRITY, GRAB_FIRST_HAPPY, PAPER_BUY_PRICE, BUY_FIRST_INTEGRITY, GRAB_GRUDGE_MONTHS, MASTER_GRAD_PAPER, PHD_GRAD_PAPER, downgradeTier, PLAYER_AUTHOR_ID } from '../data/papers.js';
 import { HARDPOINT_METHODS, TEAM_MIN_STUDENTS, TEAM_MONEY, TEAM_STUDENT_HAPPY, TEAM_OTHER_PROJECT_MUL, FAKE_MONEY, FAKE_INTEGRITY, FAKE_STUDENT_HAPPY, FAKE_CAUGHT_INTEGRITY, FAKE_CAUGHT_PROGRESS_MUL, AUDIT_TRIGGER_FAKE_COUNT, AUDIT_MONTHLY_CHANCE, AUDIT_INTEGRITY, SOLO_MONEY, SOLO_STUDENT_HAPPY, SOLO_FAIL_HAPPY, MAX_PROJECTS_PER_STUDENT, PROJECT_MAX_STUDENTS, hardpointCount } from '../data/hardpoints.js';
-import { WAGE, WAGE_TIER_LABELS, LEAVE_TRIGGER_HAPPINESS, LEAVE_TRANSFER_RATE, LEAVE_TRANSFER_PROGRESS_MUL, LEAVE_EXTREME_RATE, LEAVE_EXTREME_INTEGRITY, DEGREE_PROGRESS_MAX, DEFER_HAPPY, DEFER_MONTHS_SUBTRACT, DEFER_QUOTA_PHD, DEFER_QUOTA_MASTER, GRAD_INTEGRITY_BONUS, HAPPY_PROJECT_FINISH, INITIAL_HAPPINESS, ABILITY_MIN, ABILITY_MAX, ABILITY_TRANSLATE_MEAN_SD, ABILITY_EXAM_MEAN_SD, ABILITY_DARKHORSE_MEAN_SD, ABILITY_DARKHORSE_RATE, STUDENT_DEGREE_MASTER_RATE, POACHABLE_ABILITY_MIN, POACHABLE_HAPPY_MAX, RARE_SPAWN_RATE, RARE_TALENTS, ABILITY_MAX_RARE } from '../data/students.js';
+import { WAGE, WAGE_TIER_LABELS, LEAVE_TRIGGER_HAPPINESS, LEAVE_TRANSFER_RATE, LEAVE_TRANSFER_PROGRESS_MUL, LEAVE_EXTREME_RATE, LEAVE_EXTREME_INTEGRITY, DEGREE_PROGRESS_MAX, DEFER_HAPPY, DEFER_MONTHS_SUBTRACT, DEFER_BY_BOSS_HAPPY, DEFER_BY_BOSS_PROGRESS, DEFER_QUOTA_PHD, DEFER_QUOTA_MASTER, GRAD_INTEGRITY_BONUS, HAPPY_PROJECT_FINISH, INITIAL_HAPPINESS, ABILITY_MIN, ABILITY_MAX, ABILITY_TRANSLATE_MEAN_SD, ABILITY_EXAM_MEAN_SD, ABILITY_DARKHORSE_MEAN_SD, ABILITY_DARKHORSE_RATE, STUDENT_DEGREE_MASTER_RATE, POACHABLE_ABILITY_MIN, POACHABLE_HAPPY_MAX, RARE_SPAWN_RATE, RARE_TALENTS, ABILITY_MAX_RARE } from '../data/students.js';
 import { POOL_CAP, POOL_TRANSLATE_MONTHS, POOL_EXAM_MONTHS, RECRUIT_PER_MONTH, MIN_RECRUITABLE_STUDENT_OFFERS } from '../data/market.js';
 import { ACTION_DEFS, ACTION_MAP, TALK_PER_STUDENT_PER_MONTH, TALK_PROJECT_PROGRESS, TALK_HAPPY, TALK_DEGREE, MEETING_PROJECT_PROGRESS, MEETING_CREW_MUL, HAPPY_ACTION_MEETING, EXERCISE_HEALTH, EXERCISE_HEALTH_HIGH_THRESHOLD, EXERCISE_HEALTH_HIGH, HAPPY_ACTION_TEAMBUILD, TEAMBUILD_COST_PER_STUDENT } from '../data/actions.js';
 import { EVENT_MAP, EVENT_WEIGHT_DEFAULT, MACHINE_DOWN_MONTHS } from '../data/events.js';
@@ -72,6 +72,8 @@ export const ACTIONS = {
   buyFirstAuthor: (payload) => ({ type: 'game/buyFirstAuthor', payload }),
   grabFirstAuthor: (payload) => ({ type: 'game/grabFirstAuthor', payload }),
   chooseDefer: (payload) => ({ type: 'game/chooseDefer', payload }),
+  // v1.6.0：老板主动拍板「延毕他」（名册上随时可点，独立于到期的二选一）
+  deferStudentByBoss: (payload) => ({ type: 'game/deferStudentByBoss', payload }),
   resolveEvent: (payload) => ({ type: 'game/resolveEvent', payload }),
   resign: (payload = {}) => ({ type: 'game/resign', payload }),
   setName: (payload = {}) => ({ type: 'game/setName', payload }),
@@ -135,6 +137,7 @@ export function reduce(state, action) {
     case 'game/buyFirstAuthor': return reduceBuyFirstAuthor(state, action.payload || {});
     case 'game/grabFirstAuthor': return reduceGrabFirstAuthor(state, action.payload || {});
     case 'game/chooseDefer': return reduceChooseDefer(state, action.payload || {});
+    case 'game/deferStudentByBoss': return reduceDeferStudentByBoss(state, action.payload || {});
     case 'game/resolveEvent': return reduceResolveEvent(state, action.payload || {});
     case 'game/resign': return reduceResign(state);
     case 'game/setName': return reduceSetName(state, action.payload || {});
@@ -693,6 +696,38 @@ function reduceChooseDefer(state, payload) {
   } else {
     giveUpStudent(next, st, log, 'quit');
   }
+  return next;
+}
+
+/**
+ * v1.6.0「延毕他」：老板随时拍板的主动延毕，**独立于**到期的「延毕/肄业」二选一。
+ *   效果只有用户点名的两条：happiness +DEFER_BY_BOSS_HAPPY、degreeProgress +DEFER_BY_BOSS_PROGRESS
+ *   （各自夹到 0..上限）。【不动】studyMonthsLeft / deferMonths / 诚信 / 任何其它字段——
+ *   到期的延毕流程仍走 game/chooseDefer（engine.js 的 pendingDeferStudents 那一条）。
+ *   守卫：该生存在、未 left、未 graduated；否则只给中文 toast，不改状态、不扣钱。
+ */
+function reduceDeferStudentByBoss(state, payload) {
+  const next = cloneState(state);
+  const st = next.students.find((s) => s.id === payload.studentId);
+  const reject = (msg) => {
+    next.ui.toast = msg;
+    return next;
+  };
+  if (!st) return reject('名单里没有这名学生，延毕不了。');
+  if (st.left || st.graduated) {
+    return reject('延毕不了：' + st.name + ' 已经' + (st.graduated ? '毕业' : '离组') + '了。');
+  }
+  const happyBefore = st.happiness;
+  const progressBefore = st.degreeProgress;
+  st.happiness = clampHappiness(st.happiness + DEFER_BY_BOSS_HAPPY);
+  st.degreeProgress = round(clamp(st.degreeProgress + DEFER_BY_BOSS_PROGRESS, 0, DEGREE_PROGRESS_MAX), 2);
+  pushChronicle(next, {
+    kind: 'system',
+    tone: 'bad',
+    text: st.name + ' 被你亲手按下「再留一年」：幸福度 '
+      + (st.happiness - happyBefore) + '、毕业进度 ' + round(st.degreeProgress - progressBefore, 2)
+      + '。这不是制度到期，是你拍的板——他会记恨你。',
+  });
   return next;
 }
 

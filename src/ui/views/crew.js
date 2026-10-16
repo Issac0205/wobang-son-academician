@@ -7,7 +7,7 @@
 
 import { h, bar, tag, button, uiCard, uiDisclosure, uiSubTabs, uiEmpty, uiKv, uiNote, uiInlineStat, uiInlineBar, uiPaperTiles, uiGoto, uiNum1, uiLevelTone, uiDeltaText } from '../dom.js';
 import { renderLabSpace } from './lab.js';
-import { UI_SUBTABS, UI_EMPTY, UI_WAGE_TIERS, UI_ACTION_LABELS, UI_GRAB, UI_CONSUMABLE_UNIT, UI_DEFER, UI_PAPER_SHOP, UI_PAPER_TILE, UI_RANK_HINT } from '../copy.js';
+import { UI_SUBTABS, UI_EMPTY, UI_WAGE_TIERS, UI_ACTION_LABELS, UI_GRAB, UI_CONSUMABLE_UNIT, UI_DEFER, UI_DEFER_BOSS, UI_PAPER_SHOP, UI_PAPER_TILE, UI_RANK_HINT } from '../copy.js';
 
 /** 名单里标出「等老板拍板的延毕决定」（与弹层同一件事）。 */
 const UI_DEFER_TAG = UI_DEFER.pendingTag + '：延毕还是肄业';
@@ -220,6 +220,11 @@ function uiStudentCard(vm, s, ctx) {
     active
       ? h('div', { class: 'student-actions' }, [
         uiWageButtons(vm, s),
+        // v1.6.0：随时可点的主动延毕；点开先走确认弹层（手机名册密集，防误触）
+        s.canDeferByBoss
+          ? button(UI_DEFER_BOSS.button, { action: 'defer-boss-open', studentId: s.id },
+            { class: 'btn-ghost btn-xs btn-danger-ghost', title: UI_DEFER_BOSS.lead })
+          : null,
         s.monthsLeft <= 0 ? tag(UI_DEFER_TAG, 'warn') : null,
         s.monthsLeftText && s.degreeProgress < 100 ? uiGoto('快延毕了？去抢救', 'actions', { title: '毕业进度靠「' + UI_ACTION_LABELS.talk + '」和「开组会」推' }) : null,
         s.deferMonths > 0 ? button('延毕规则', { action: 'help' }, { class: 'btn-ghost btn-xs', title: '延毕要你签字：到期后弹层里二选一' }) : null,

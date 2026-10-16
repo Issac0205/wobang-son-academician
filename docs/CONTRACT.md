@@ -373,6 +373,7 @@ GIVEUP_* DEGREE_KIND DEGREE_LABELS
 | game/buyFirstAuthor | {tier:'top'\|'q1'\|'q2'\|'q3'\|'q4'} | 是 | 买一作：**tier 必填**（缺档位或经费不足 → toast + 原样返回，不扣钱）；扣 PAPER_BUY_PRICE[tier] + 诚信 BUY_FIRST_INTEGRITY；该篇一作归玩家 → papers[tier] +1（玩家一作数）、totalIF += IF、papersFirst[tier] +1、counters.papersAwarded +1 |
 | game/grabFirstAuthor | {studentId, paperId, tier} | 是 | 抢一作：三者**全必填**；只能抢「结题台帐里该生为一作、尚未被抢」的那一篇，一篇一次、每生每月一次、tier 必须与台帐一致；台帐里该篇 firstAuthorId 改成 PLAYER_AUTHOR_ID（grabbed=true + grabbedMonthIndex）；诚信 GRAB_FIRST_INTEGRITY、该生幸福 GRAB_FIRST_HAPPY、心结 GRAB_GRUDGE_MONTHS 个月；**不重复计 IF**（该篇 IF 已在结题时计过）、**不动 papersAwarded**，只有 papers[tier] +1 与 papersFirst[tier] +1 |
 | game/chooseDefer | {studentId, choice:'defer'\|'giveUp'} | 是 | 延毕决定（t8）：学制读满的学生必须由玩家拍板，没拍板不能推进月份；defer = 工期 +DEFER_MONTHS_SUBTRACT、幸福 +DEFER_HAPPY、deferMonths+1、不占招生名额；giveUp = 肄业离组（与超年限同一条路径） |
+| game/deferStudentByBoss | {studentId} | 是 | **v1.6.0「延毕他」**：老板随时拍板的主动延毕，与到期的 game/chooseDefer 是两件事。守卫：该生存在、未 left、未 graduated，否则中文 toast + 原样返回（不改状态、不扣钱）；效果只有两条 —— happiness +DEFER_BY_BOSS_HAPPY（夹 0..HAPPINESS_MAX）、degreeProgress +DEFER_BY_BOSS_PROGRESS（夹 0..DEGREE_PROGRESS_MAX）；**不动** studyMonthsLeft / deferMonths / 诚信；成功写一条 system 纪事（说明是老板拍的板）；允许连点，每次各自生效 |
 | game/resolveEvent | {eventId, choiceId?} | 是 | 结算当前事件；队列非空时自动弹下一个 |
 | game/resign | {} | 是 | 主动下海（industry 结局） |
 | game/setName | {name?, sonName?} | 是 | 改玩家/儿子姓名（trim + 压空格 + 截断 PLAYER_NAME_MAX_LENGTH；空值 → toast 不改 state；改动成功写一条系统纪事） |

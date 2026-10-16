@@ -94,6 +94,16 @@ export function createApp(options) {
       render();
     },
     'defer-choice': (el) => dispatch('game/chooseDefer', { studentId: el.dataset.studentId, choice: el.dataset.choice }),
+    // v1.6.0「延毕他」：第一次点击只摊开确认弹层（写明「幸福度 −20、毕业进度 −25，他会记恨你」），确认后才 dispatch
+    'defer-boss-open': (el) => openModal({ kind: 'defer-boss', studentId: el.dataset.studentId }),
+    'defer-boss-confirm': (el) => {
+      const pending = localUi.modal && localUi.modal.kind === 'defer-boss' ? localUi.modal.studentId : null;
+      const studentId = pending || (el && el.dataset ? el.dataset.studentId : '');
+      localUi.modal = null;
+      if (studentId) dispatch('game/deferStudentByBoss', { studentId });
+      render();
+    },
+    'defer-boss-cancel': () => openModal(null),
     // 一键分配（t25）：UI 只发动作，分配规则与预览都由 core 算
     'auto-assign': () => dispatch('game/autoAssign', {}),
     // 首次进项目页的引导：点掉就记在本地（不写 state，重开一局不影响）
@@ -343,7 +353,8 @@ export function createApp(options) {
   }
 
   function openModal(kind) {
-    localUi.modal = kind ? { kind } : null;
+    // v1.6.0：弹层需要带参数（如「延毕他」的 studentId）时直接传对象，其余保持原样
+    localUi.modal = !kind ? null : (typeof kind === 'object' ? kind : { kind });
     render();
   }
 

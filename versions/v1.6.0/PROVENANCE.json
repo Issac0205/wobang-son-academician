@@ -1,0 +1,25 @@
+{
+  "version": "1.6.0",
+  "archivedAt": "2026-10-16T11:05:14.800Z",
+  "singleFile": "wobang-son-academician.html",
+  "distSha256": "7c0833b82608a1148a0fdc8144e17bbf83dd555ad1a2124f83804e1aec5b9ddd",
+  "distBytes": 571672,
+  "srcHash": "bc2e30f8981de5bd",
+  "srcFiles": 41,
+  "commands": {
+    "check": {
+      "exit": 0,
+      "note": ""
+    },
+    "simulate": {
+      "exit": 0,
+      "note": ""
+    }
+  },
+  "verification": {
+    "file": "docs/VERIFICATION.md",
+    "sha256": "6b77754c9f553d9b",
+    "verdictLine": "**verdict: needs_revision（非 blocker 级）**"
+  },
+  "note": "README.md 由人写（归档器不覆盖）；本文件由 scripts/version.mjs --archive 生成。"
+}

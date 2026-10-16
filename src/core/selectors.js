@@ -13,6 +13,7 @@ import { PAPER_TIER_LABELS, PAPER_TIER_ORDER, PAPER_BUY_PRICE, GRAB_FIRST_HAPPY,
 import {
   WAGE, WAGE_TIER_LABELS, DEGREE_LABELS, MASTER_STUDY_MONTHS, PHD_STUDY_MONTHS, DEGREE_PROGRESS_MAX,
   DEFER_HAPPY, DEFER_HAPPY_PER_MONTH, DEFER_MONTHS_SUBTRACT, DEFER_QUOTA_MASTER, DEFER_QUOTA_PHD, DEFER_FREE_QUOTA,
+  DEFER_BY_BOSS_HAPPY, DEFER_BY_BOSS_PROGRESS,
   INITIAL_HAPPINESS, HAPPINESS_MIN, HAPPINESS_MAX, MASTER_GRAD_PAPER_TIER, PHD_GRAD_PAPER_TIER, GRAD_INTEGRITY_BONUS,
   ABILITY_MIN, ABILITY_MAX, ABILITY_MAX_RARE, RARE_SPAWN_RATE, RARE_TALENTS, INITIAL_STUDENT_ABILITY_MEAN_SD,
   ABILITY_TRANSLATE_MEAN_SD, ABILITY_EXAM_MEAN_SD, ABILITY_DARKHORSE_MEAN_SD, ABILITY_DARKHORSE_RATE,
@@ -144,6 +145,8 @@ export function selectStudentRow(state, st) {
     statusLabel: st.graduated ? '已毕业' : (st.left ? (st.note || '已离组') : (st.deferMonths > 0 ? '延毕中' : '在读')),
     // 本月是否已经抢过一作（core 的判定，UI 直接显示，不再自己推导）
     grabbedPaperThisMonth: grabbedPaperThisMonth(state, st.id),
+    // v1.6.0：这张学生卡能不能点「延毕他」（判定在 core，UI 不自己推）
+    canDeferByBoss: !st.left && !st.graduated,
   };
 }
 
@@ -502,6 +505,11 @@ export function selectUiConstants() {
       giveUpIntegrity: INTEGRITY_DELTA.giveUpStudent,
       freeQuota: DEFER_FREE_QUOTA,
     },
+    /** v1.6.0「延毕他」确认弹层的代价（数字来自 src/data，UI 只拼句） */
+    deferByBoss: {
+      happy: DEFER_BY_BOSS_HAPPY,
+      progress: DEFER_BY_BOSS_PROGRESS,
+    },
     /** 耗材资金的单位换算（t8 finding：UI 要说清 1 单位 = 1 万元） */
     consumable: {
       pricePerUnit: CONSUMABLE_PRICE_PER_UNIT,
@@ -720,6 +728,7 @@ export function selectWiki() {
       wikiRowOf('students.poach', '被挖走', '项目进度 ' + wikiMulOf(POACH_PROGRESS_MUL)),
       wikiRowOf('students.extreme', '极端离组', '每月 ' + wikiPctOf(LEAVE_EXTREME_RATE) + ' 概率 · 诚信 ' + wikiDeltaOf(LEAVE_EXTREME_INTEGRITY)),
       wikiRowOf('students.defer', '延毕一年', '幸福 ' + wikiDeltaOf(DEFER_HAPPY) + ' · 之后每月再 ' + wikiDeltaOf(DEFER_HAPPY_PER_MONTH) + ' · 在读月数 +' + DEFER_MONTHS_SUBTRACT, '不占招生名额；硕士最多 ' + DEFER_QUOTA_MASTER + ' 次、博士 ' + DEFER_QUOTA_PHD + ' 次'),
+      wikiRowOf('students.deferByBoss', '延毕他（随时可点）', '幸福 ' + wikiDeltaOf(DEFER_BY_BOSS_HAPPY) + ' · 毕业进度 ' + wikiDeltaOf(DEFER_BY_BOSS_PROGRESS), '你亲手拍的板：他会记恨你；不动学制、也不占延毕次数'),
       wikiRowOf('students.giveUp', '肄业离组', '项目进度 ' + wikiMulOf(GIVEUP_PROGRESS_MUL) + ' · 诚信 ' + wikiDeltaOf(INTEGRITY_DELTA.giveUpStudent)),
     ],
   });

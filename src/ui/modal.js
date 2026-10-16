@@ -6,7 +6,7 @@
  */
 
 import { $, h, mount, clear, button, tag, uiNum1, uiDeltaText } from './dom.js';
-import { UI_RNAME, UI_RESET, UI_HELP_SECTIONS, UI_WIKI, UI_DEFER, UI_RESIGN } from './copy.js';
+import { UI_RNAME, UI_RESET, UI_HELP_SECTIONS, UI_WIKI, UI_DEFER, UI_DEFER_BOSS, UI_RESIGN } from './copy.js';
 import { renderReceiptDetail } from './receipt.js';
 import { uiWikiView } from './views/wiki.js';
 
@@ -179,6 +179,30 @@ function uiDeferModal(vm) {
   return uiModalShell(UI_DEFER.title, UI_DEFER.subtitle, 'warn', body, []);
 }
 
+/**
+ * v1.6.0「延毕他」确认弹层：名册密集，先摊开代价再动手（复用 uiModalShell，不新造弹层）。
+ * 代价里的数字全部来自 vm.consts.deferByBoss（core 的数据层），UI 只做拼句。
+ */
+function uiDeferBossModal(vm, ui) {
+  const consts = (vm.consts && vm.consts.deferByBoss) || null;
+  const id = ui && ui.modal ? ui.modal.studentId : null;
+  const rows = (vm.crew && vm.crew.students) || (vm.crew && vm.crew.active) || [];
+  const row = rows.filter((s) => s.id === id)[0] || null;
+  const costText = consts
+    ? UI_DEFER_BOSS.cost.replace('{happy}', uiDeltaText(consts.happy)).replace('{progress}', uiDeltaText(consts.progress))
+    : UI_DEFER_BOSS.noConsts;
+  const body = [
+    h('p', { class: 'event-text', text: UI_DEFER_BOSS.lead }),
+    h('p', { class: 'event-text', dataset: { role: 'defer-boss-cost' }, text: costText }),
+    row ? h('p', { class: 'muted', text: row.name + ' · 幸福度 ' + row.happiness + ' · 毕业进度 ' + row.degreeProgress + '%' }) : null,
+  ];
+  const actions = [
+    button(UI_DEFER_BOSS.confirm, { action: 'defer-boss-confirm', studentId: id || '' }, { kind: 'danger' }),
+    button(UI_DEFER_BOSS.cancel, { action: 'defer-boss-cancel' }, { class: 'btn-ghost' }),
+  ];
+  return uiModalShell(UI_DEFER_BOSS.title, UI_DEFER_BOSS.subtitle, 'bad', body, actions);
+}
+
 /** 主渲染：core 事件/结局优先，其次是玩家自己打开的弹层。 */
 export function renderModal(vm, localUi) {
   const root = $('modal-root');
@@ -193,6 +217,7 @@ export function renderModal(vm, localUi) {
   else if (localKind === 'receipt') node = uiModalShell('结算明细', null, 'plain', renderReceiptDetail(vm, vm.receipt), [button('知道了', { action: 'modal-close' }, { kind: 'primary' })]);
   else if (localKind === 'reset') node = uiResetModal();
   else if (localKind === 'resign-confirm' || localKind === 'resign') node = uiResignModal();
+  else if (localKind === 'defer-boss') node = uiDeferBossModal(vm, ui);
   else if (vm.pendingEvent) node = uiEventModal(vm.pendingEvent);
   else if (vm.pendingDefer && vm.pendingDefer.length) node = uiDeferModal(vm);
   if (node) mount(root, [node]);

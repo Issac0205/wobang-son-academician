@@ -177,6 +177,45 @@ t16 存档白名单 / negativeMoneyMonths 持久化、t22 项目刷新与招生�
   `scripts/build-single.mjs`、`scripts/asset-audit.mjs`。
 - `STATE_VERSION` 不变（= 3）：`market.rareHired` 是向后兼容的新增字段，旧档安全默认成 `[]`。
 
+## 1.6.0 — 「延毕他」：老板随时拍板的主动延毕（2026-10-18，用户点名的两个效果）
+
+### 玩法（只做用户点名的两条效果）
+- **学生名册每张在读学生卡新增「延毕他」按钮**：随时可点。它与「学制读满后弹层的延毕/肄业二选一」
+  是**两件独立的事**——既有到期流程一行未动（engine.js 的 `pendingDeferStudents` / `game/chooseDefer` 原样保留）。
+- 点击先走**确认弹层**（复用既有 `uiModalShell`，不新造弹层）：写明代价「幸福度 −20、毕业进度 −25，他会记恨你」，
+  并显示该生当前幸福度与毕业进度；**确认之前状态一点不动**（手机名册密集，防误触）。
+- 引擎动作 **`game/deferStudentByBoss { studentId }`**（契约登记在 docs/CONTRACT.md §3.1）：
+  · 守卫：该生存在、未 left、未 graduated；否则中文 toast + 原样返回（不改状态、不扣钱、不扣诚信）。
+  · 效果**只有两条**：`happiness +DEFER_BY_BOSS_HAPPY`（夹 0..HAPPINESS_MAX）、
+    `degreeProgress +DEFER_BY_BOSS_PROGRESS`（夹 0..DEGREE_PROGRESS_MAX）；
+    **不动** `studyMonthsLeft` / `deferMonths` / 诚信 / 任何其它字段——所以它既不会绕过、也不会污染到期的延毕判定。
+  · 成功写一条 `system` 纪事（「这不是制度到期，是你拍的板——他会记恨你」）。
+  · **允许连点**，每一次各自生效（断言见 tests/defer-boss.test.mjs §4）。
+
+### 数值（全在 src/data/students.js，core 里没有裸 −20/−25）
+- `DEFER_BY_BOSS_HAPPY = -20`、`DEFER_BY_BOSS_PROGRESS = -25`（CONTRACT §1.7 的 `DEFER_*` 通配已覆盖这两个名字）。
+- 确认弹层的代价文本、百科词条都从 `vm.consts.deferByBoss` 取值；src/ui 里没有任何数值字面量。
+
+### 百科自动同步（沿用 v1.5.0 数据驱动链路）
+- 第 5 章「学生」新增词条 `students.deferByBoss`：「延毕他（随时可点）= 幸福 −20 · 毕业进度 −25」，
+  由 `selectWiki()` 从 src/data 组装 → `vm.consts.wiki` → `src/ui/views/wiki.js` 只排版（该文件仍无数字字符）。
+- ui-smoke §19 把该词条与独立写死的规格字面量「幸福 −20 · 毕业进度 −25」逐字对账。
+
+### 测试与验收
+- 新增 **tests/defer-boss.test.mjs（24 条断言）**：恰好 −20 / 恰好 −25；边界夹取（happiness 5 → 0、progress 10 → 0）；
+  已毕业 / 已离组 / 不存在的 id 三条拒绝路径「学生表逐字不变 + 中文 toast」；被拒时不扣钱不扣诚信；
+  连点两次各自生效（累计 −40 / −50）；system 纪事与「拒绝不写纪事」。已登记进 run-all.mjs（第 7 个脚本）。
+- ui-smoke 新增 DOM 断言：按钮存在（2 张在读卡片 2 个按钮）、确认弹层含「−20 / −25 / 记恨」、
+  确认前状态不变、确认后 60 → 40 与 40 → 15、学制与延毕次数原样。冒烟 **157 项全部 ok**。
+- 四条命令退出码全 0：`scripts/check.mjs`（0 错 0 警）、`tests/run-all.mjs`（10/10 脚本）、
+  `scripts/ui-smoke.mjs`（157 项）、`scripts/asset-audit.mjs`（外部引用 0）。
+- 归档：`versions/v1.6.0/wobang-son-academician.html` **571 672 字节**、sha256 `7c0833b82608a114…`，
+  与当前 dist 逐字节一致；`version.mjs --archive` 记录 check=0 / simulate=0，
+  `--verify` 9 个版本目录全部对账一致（src 聚合哈希 `bc2e30f8981de5bd`）。
+- 未验证项：**没有浏览器实机点击**（本轮只有 DOM shim 冒烟）；`versions/v1.6.0/README.md` 留待人工补写。
+
+---
+
 ## 1.5.0 — 游戏内百科（2026-10-17，用户 SPEC：_probe/wiki-1.5-spec.md）
 
 ### 玩法

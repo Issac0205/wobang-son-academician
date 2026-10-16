@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 我帮儿子评院士 v1.5.0 · 单文件构建 · 2026-10-16T09:49:37.323Z · 源码：39 个模块（纯前端 ES Module，零构建依赖） -->
+<!-- 我帮儿子评院士 v1.6.0 · 单文件构建 · 2026-10-16T11:04:25.873Z · 源码：39 个模块（纯前端 ES Module，零构建依赖） -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
@@ -1558,6 +1558,10 @@ const DEFER_MONTHS_SUBTRACT = 12;
 const DEFER_QUOTA_MASTER = 2;
 const DEFER_QUOTA_PHD = 3;
 const DEFER_FREE_QUOTA = true;             // SPEC：延毕生不占招生名额
+/* v1.6.0「延毕他」：老板随时拍板的主动延毕，与「到期后延毕/肄业二选一」是两件事。
+   只有这两个效果（用户点名）；不动 studyMonthsLeft / deferMonths / 诚信。 */
+const DEFER_BY_BOSS_HAPPY = -20;
+const DEFER_BY_BOSS_PROGRESS = -25;
 const GIVEUP_PROGRESS_MUL = 0.40;
 const GIVEUP_INTEGRITY = -2;
 const DEGREE_KIND = { master: 'master', phd: 'phd' };
@@ -4155,6 +4159,8 @@ const ACTIONS = {
   buyFirstAuthor: (payload) => ({ type: 'game/buyFirstAuthor', payload }),
   grabFirstAuthor: (payload) => ({ type: 'game/grabFirstAuthor', payload }),
   chooseDefer: (payload) => ({ type: 'game/chooseDefer', payload }),
+  // v1.6.0：老板主动拍板「延毕他」（名册上随时可点，独立于到期的二选一）
+  deferStudentByBoss: (payload) => ({ type: 'game/deferStudentByBoss', payload }),
   resolveEvent: (payload) => ({ type: 'game/resolveEvent', payload }),
   resign: (payload = {}) => ({ type: 'game/resign', payload }),
   setName: (payload = {}) => ({ type: 'game/setName', payload }),
@@ -4218,6 +4224,7 @@ function reduce(state, action) {
     case 'game/buyFirstAuthor': return reduceBuyFirstAuthor(state, action.payload || {});
     case 'game/grabFirstAuthor': return reduceGrabFirstAuthor(state, action.payload || {});
     case 'game/chooseDefer': return reduceChooseDefer(state, action.payload || {});
+    case 'game/deferStudentByBoss': return reduceDeferStudentByBoss(state, action.payload || {});
     case 'game/resolveEvent': return reduceResolveEvent(state, action.payload || {});
     case 'game/resign': return reduceResign(state);
     case 'game/setName': return reduceSetName(state, action.payload || {});
@@ -4776,6 +4783,38 @@ function reduceChooseDefer(state, payload) {
   } else {
     giveUpStudent(next, st, log, 'quit');
   }
+  return next;
+}
+
+/**
+ * v1.6.0「延毕他」：老板随时拍板的主动延毕，**独立于**到期的「延毕/肄业」二选一。
+ *   效果只有用户点名的两条：happiness +DEFER_BY_BOSS_HAPPY、degreeProgress +DEFER_BY_BOSS_PROGRESS
+ *   （各自夹到 0..上限）。【不动】studyMonthsLeft / deferMonths / 诚信 / 任何其它字段——
+ *   到期的延毕流程仍走 game/chooseDefer（engine.js 的 pendingDeferStudents 那一条）。
+ *   守卫：该生存在、未 left、未 graduated；否则只给中文 toast，不改状态、不扣钱。
+ */
+function reduceDeferStudentByBoss(state, payload) {
+  const next = cloneState(state);
+  const st = next.students.find((s) => s.id === payload.studentId);
+  const reject = (msg) => {
+    next.ui.toast = msg;
+    return next;
+  };
+  if (!st) return reject('名单里没有这名学生，延毕不了。');
+  if (st.left || st.graduated) {
+    return reject('延毕不了：' + st.name + ' 已经' + (st.graduated ? '毕业' : '离组') + '了。');
+  }
+  const happyBefore = st.happiness;
+  const progressBefore = st.degreeProgress;
+  st.happiness = clampHappiness(st.happiness + DEFER_BY_BOSS_HAPPY);
+  st.degreeProgress = round(clamp(st.degreeProgress + DEFER_BY_BOSS_PROGRESS, 0, DEGREE_PROGRESS_MAX), 2);
+  pushChronicle(next, {
+    kind: 'system',
+    tone: 'bad',
+    text: st.name + ' 被你亲手按下「再留一年」：幸福度 '
+      + (st.happiness - happyBefore) + '、毕业进度 ' + round(st.degreeProgress - progressBefore, 2)
+      + '。这不是制度到期，是你拍的板——他会记恨你。',
+  });
   return next;
 }
 
@@ -6845,6 +6884,8 @@ function selectStudentRow(state, st) {
     statusLabel: st.graduated ? '已毕业' : (st.left ? (st.note || '已离组') : (st.deferMonths > 0 ? '延毕中' : '在读')),
     // 本月是否已经抢过一作（core 的判定，UI 直接显示，不再自己推导）
     grabbedPaperThisMonth: grabbedPaperThisMonth(state, st.id),
+    // v1.6.0：这张学生卡能不能点「延毕他」（判定在 core，UI 不自己推）
+    canDeferByBoss: !st.left && !st.graduated,
   };
 }
 
@@ -7203,6 +7244,11 @@ function selectUiConstants() {
       giveUpIntegrity: INTEGRITY_DELTA.giveUpStudent,
       freeQuota: DEFER_FREE_QUOTA,
     },
+    /** v1.6.0「延毕他」确认弹层的代价（数字来自 src/data，UI 只拼句） */
+    deferByBoss: {
+      happy: DEFER_BY_BOSS_HAPPY,
+      progress: DEFER_BY_BOSS_PROGRESS,
+    },
     /** 耗材资金的单位换算（t8 finding：UI 要说清 1 单位 = 1 万元） */
     consumable: {
       pricePerUnit: CONSUMABLE_PRICE_PER_UNIT,
@@ -7421,6 +7467,7 @@ function selectWiki() {
       wikiRowOf('students.poach', '被挖走', '项目进度 ' + wikiMulOf(POACH_PROGRESS_MUL)),
       wikiRowOf('students.extreme', '极端离组', '每月 ' + wikiPctOf(LEAVE_EXTREME_RATE) + ' 概率 · 诚信 ' + wikiDeltaOf(LEAVE_EXTREME_INTEGRITY)),
       wikiRowOf('students.defer', '延毕一年', '幸福 ' + wikiDeltaOf(DEFER_HAPPY) + ' · 之后每月再 ' + wikiDeltaOf(DEFER_HAPPY_PER_MONTH) + ' · 在读月数 +' + DEFER_MONTHS_SUBTRACT, '不占招生名额；硕士最多 ' + DEFER_QUOTA_MASTER + ' 次、博士 ' + DEFER_QUOTA_PHD + ' 次'),
+      wikiRowOf('students.deferByBoss', '延毕他（随时可点）', '幸福 ' + wikiDeltaOf(DEFER_BY_BOSS_HAPPY) + ' · 毕业进度 ' + wikiDeltaOf(DEFER_BY_BOSS_PROGRESS), '你亲手拍的板：他会记恨你；不动学制、也不占延毕次数'),
       wikiRowOf('students.giveUp', '肄业离组', '项目进度 ' + wikiMulOf(GIVEUP_PROGRESS_MUL) + ' · 诚信 ' + wikiDeltaOf(INTEGRITY_DELTA.giveUpStudent)),
     ],
   });
@@ -8164,6 +8211,22 @@ const UI_DEFER = {
   // core 没给 vm.consts.defer 时的兜底：不带数字，但必须说明两边都不可逆
   noConsts: '两条路都不可逆：延毕会大幅降他的幸福度、还占不到招生名额；肄业则直接少一个人（具体数值由 core 提供）。',
   pendingTag: '待决',
+};
+
+/**
+ * v1.6.0「延毕他」：学生名册上的主动延毕（与到期的「延毕决定」是两件事）。
+ * 点开先走确认弹层，代价写在弹层里；数字全部由 vm.consts.deferByBoss 提供。
+ */
+const UI_DEFER_BOSS = {
+  button: '延毕他',
+  title: '让他再留一年？',
+  subtitle: '不可撤销 · 他会记恨你',
+  lead: '这不是学制到期的那次延毕决定，是你亲手拍的板。',
+  cost: '幸福度 {happy}、毕业进度 {progress}，他会记恨你。',
+  confirm: '确认延毕',
+  cancel: '算了',
+  // core 没给 vm.consts.deferByBoss 时的兜底：不带数字，但必须说清代价
+  noConsts: '代价由 core 提供：掉他的幸福度、也压他的毕业进度，而且他会记恨你。',
 };
 
 /** 耗材资金的单位说明（t8 finding：把「单位」与「万元」说清楚）。 */
@@ -9080,6 +9143,11 @@ function uiStudentCard(vm, s, ctx) {
     active
       ? h('div', { class: 'student-actions' }, [
         uiWageButtons(vm, s),
+        // v1.6.0：随时可点的主动延毕；点开先走确认弹层（手机名册密集，防误触）
+        s.canDeferByBoss
+          ? button(UI_DEFER_BOSS.button, { action: 'defer-boss-open', studentId: s.id },
+            { class: 'btn-ghost btn-xs btn-danger-ghost', title: UI_DEFER_BOSS.lead })
+          : null,
         s.monthsLeft <= 0 ? tag(UI_DEFER_TAG, 'warn') : null,
         s.monthsLeftText && s.degreeProgress < 100 ? uiGoto('快延毕了？去抢救', 'actions', { title: '毕业进度靠「' + UI_ACTION_LABELS.talk + '」和「开组会」推' }) : null,
         s.deferMonths > 0 ? button('延毕规则', { action: 'help' }, { class: 'btn-ghost btn-xs', title: '延毕要你签字：到期后弹层里二选一' }) : null,
@@ -10222,6 +10290,30 @@ function uiDeferModal(vm) {
   return uiModalShell(UI_DEFER.title, UI_DEFER.subtitle, 'warn', body, []);
 }
 
+/**
+ * v1.6.0「延毕他」确认弹层：名册密集，先摊开代价再动手（复用 uiModalShell，不新造弹层）。
+ * 代价里的数字全部来自 vm.consts.deferByBoss（core 的数据层），UI 只做拼句。
+ */
+function uiDeferBossModal(vm, ui) {
+  const consts = (vm.consts && vm.consts.deferByBoss) || null;
+  const id = ui && ui.modal ? ui.modal.studentId : null;
+  const rows = (vm.crew && vm.crew.students) || (vm.crew && vm.crew.active) || [];
+  const row = rows.filter((s) => s.id === id)[0] || null;
+  const costText = consts
+    ? UI_DEFER_BOSS.cost.replace('{happy}', uiDeltaText(consts.happy)).replace('{progress}', uiDeltaText(consts.progress))
+    : UI_DEFER_BOSS.noConsts;
+  const body = [
+    h('p', { class: 'event-text', text: UI_DEFER_BOSS.lead }),
+    h('p', { class: 'event-text', dataset: { role: 'defer-boss-cost' }, text: costText }),
+    row ? h('p', { class: 'muted', text: row.name + ' · 幸福度 ' + row.happiness + ' · 毕业进度 ' + row.degreeProgress + '%' }) : null,
+  ];
+  const actions = [
+    button(UI_DEFER_BOSS.confirm, { action: 'defer-boss-confirm', studentId: id || '' }, { kind: 'danger' }),
+    button(UI_DEFER_BOSS.cancel, { action: 'defer-boss-cancel' }, { class: 'btn-ghost' }),
+  ];
+  return uiModalShell(UI_DEFER_BOSS.title, UI_DEFER_BOSS.subtitle, 'bad', body, actions);
+}
+
 /** 主渲染：core 事件/结局优先，其次是玩家自己打开的弹层。 */
 function renderModal(vm, localUi) {
   const root = $('modal-root');
@@ -10236,6 +10328,7 @@ function renderModal(vm, localUi) {
   else if (localKind === 'receipt') node = uiModalShell('结算明细', null, 'plain', renderReceiptDetail(vm, vm.receipt), [button('知道了', { action: 'modal-close' }, { kind: 'primary' })]);
   else if (localKind === 'reset') node = uiResetModal();
   else if (localKind === 'resign-confirm' || localKind === 'resign') node = uiResignModal();
+  else if (localKind === 'defer-boss') node = uiDeferBossModal(vm, ui);
   else if (vm.pendingEvent) node = uiEventModal(vm.pendingEvent);
   else if (vm.pendingDefer && vm.pendingDefer.length) node = uiDeferModal(vm);
   if (node) mount(root, [node]);
@@ -10351,6 +10444,16 @@ function createApp(options) {
       render();
     },
     'defer-choice': (el) => dispatch('game/chooseDefer', { studentId: el.dataset.studentId, choice: el.dataset.choice }),
+    // v1.6.0「延毕他」：第一次点击只摊开确认弹层（写明「幸福度 −20、毕业进度 −25，他会记恨你」），确认后才 dispatch
+    'defer-boss-open': (el) => openModal({ kind: 'defer-boss', studentId: el.dataset.studentId }),
+    'defer-boss-confirm': (el) => {
+      const pending = localUi.modal && localUi.modal.kind === 'defer-boss' ? localUi.modal.studentId : null;
+      const studentId = pending || (el && el.dataset ? el.dataset.studentId : '');
+      localUi.modal = null;
+      if (studentId) dispatch('game/deferStudentByBoss', { studentId });
+      render();
+    },
+    'defer-boss-cancel': () => openModal(null),
     // 一键分配（t25）：UI 只发动作，分配规则与预览都由 core 算
     'auto-assign': () => dispatch('game/autoAssign', {}),
     // 首次进项目页的引导：点掉就记在本地（不写 state，重开一局不影响）
@@ -10600,7 +10703,8 @@ function createApp(options) {
   }
 
   function openModal(kind) {
-    localUi.modal = kind ? { kind } : null;
+    // v1.6.0：弹层需要带参数（如「延毕他」的 studentId）时直接传对象，其余保持原样
+    localUi.modal = !kind ? null : (typeof kind === 'object' ? kind : { kind });
     render();
   }
 
