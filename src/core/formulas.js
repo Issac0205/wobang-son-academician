@@ -57,11 +57,11 @@ function isDown(lab, id) {
   return (lab.equipmentDown && lab.equipmentDown[id] > 0) || false;
 }
 
-/** 单台价（第 n 台 = 基础价 × 1.6^(n-1)，n = 已持有数量）。 */
+/** 单台价：1.1 起固定价（LAB-SPACE §5，INST_PRICE_GROWTH = 1）；ownedCount 仅为兼容旧调用。 */
 export function instrumentPrice(id, ownedCount) {
   const def = instrumentDef(id);
   if (!def) return Infinity;
-  return round(def.price * Math.pow(INST_PRICE_GROWTH, Math.max(0, ownedCount)), 2);
+  return round(def.price * Math.pow(INST_PRICE_GROWTH, Math.max(0, Number(ownedCount) || 0)), 2);
 }
 
 /** 全实验室仪器加成（停机仪器按 TEMP_BROKEN_BONUS_MUL 折算），上限 INST_BONUS_CAP。 */

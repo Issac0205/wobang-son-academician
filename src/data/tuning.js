@@ -117,3 +117,8 @@ export const PLAYER_NAME_MAX_LENGTH = 12;    // 策划：姓名/儿子名字的�
 /* ── 仪表盘/UI 需要的显示常量 ── */
 export const PHASE_LABELS = { action: '行动阶段', settle: '月末结算', ended: '已结束' };
 export const PHASE_ORDER = ['action', 'settle', 'ended'];
+
+/* ── 存档校验边界（t3：读档恢复 lab.consumeMulThisMonth；事件倍率可叠乘，给一个物理上限） ── */
+export const CONSUME_MUL_SAVE_MIN = 0;
+export const CONSUME_MUL_SAVE_MAX = 10;
+export const CONSUME_MUL_DEFAULT = 1;

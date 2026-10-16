@@ -5,7 +5,9 @@
  */
 
 import { RANKS, rankOf, MAX_RANK_INDEX } from '../data/ranks.js';
-import { INSTRUMENTS, INSTRUMENT_MAP, INST_HOLD_CAP } from '../data/instruments.js';
+import { INSTRUMENTS, INSTRUMENT_MAP } from '../data/instruments.js';
+import { ROOMS, ROOM_MAX, ROOM_SLOT_COLS, BENCHES, BENCH_MAP, SELL_REFUND_RATE, LAB_TEXT } from '../data/lab.js';
+import { findSpot, findEmptySlot, footprint, spaceSummary } from './lab.js';
 import { PROJECT_MAP, MARKET_SLOTS, PROJECT_SLOTS, STUDENT_SLOTS, REFRESH_MONTHLY, DEPOSIT_RATE } from '../data/projects.js';
 import { PAPER_TIER_LABELS, PAPER_TIER_ORDER, PAPER_BUY_PRICE, GRAB_FIRST_HAPPY, GRAB_GRUDGE_MONTHS, JOURNAL_IF_BASE, PLAYER_AUTHOR_ID } from '../data/papers.js';
 import { WAGE, WAGE_TIER_LABELS, DEGREE_LABELS, MASTER_STUDY_MONTHS, PHD_STUDY_MONTHS, DEGREE_PROGRESS_MAX, DEFER_HAPPY, DEFER_MONTHS_SUBTRACT, DEFER_QUOTA_MASTER, DEFER_QUOTA_PHD, DEFER_FREE_QUOTA } from '../data/students.js';
@@ -224,11 +226,13 @@ export function selectEquipment(state) {
   return INSTRUMENTS.map((def) => {
     const owned = state.lab.equipment[def.id] || 0;
     const down = (state.lab.equipmentDown[def.id] || 0) > 0;
-    const price = instrumentPrice(def.id, owned);
+    const price = instrumentPrice(def.id);
     const reasons = [];
-    if (owned >= INST_HOLD_CAP) reasons.push('已买满');
     if (state.player.rankIndex < def.tierGate) reasons.push('需头衔 ' + def.tierGate);
     if (state.player.money < price) reasons.push('经费不足');
+    // 1.1：没有持有上限，唯一约束是空间（LAB-SPACE §2）
+    const spot = findSpot(state.lab, def.id);
+    if (!spot) reasons.push('空间不足');
     return {
       id: def.id,
       name: def.name,
@@ -236,7 +240,13 @@ export function selectEquipment(state) {
       tierLabel: def.tierLabel,
       bonusPct: Math.round(def.bonus * 100),
       owned,
-      holdCap: INST_HOLD_CAP,
+      holdCap: '∞',                       // 1.1：取消持有上限（展示用）
+      w: def.w,
+      h: def.h,
+      cells: def.w * def.h,
+      flavor: def.flavor || '',
+      autoSpot: spot,                     // 自动摆放会落在哪（无坐标购买时）
+      sellRefund: Math.round(price * SELL_REFUND_RATE * 100) / 100,
       down,
       downMonths: state.lab.equipmentDown[def.id] || 0,
       price,
@@ -247,11 +257,64 @@ export function selectEquipment(state) {
   });
 }
 
+/** 1.1 实验室空间：房间 → 台位 → 台子 → 仪器（LAB-SPACE §10 的 UI 数据源）。 */
+export function selectLabSpace(state) {
+  const lab = state.lab;
+  const money = state.player.money;
+  const rank = state.player.rankIndex;
+  const rooms = (lab.rooms || []).map((room, roomIdx) => {
+    const def = ROOMS[roomIdx] || {};
+    return {
+      roomIdx, id: room.id, name: def.name || room.id, flavor: def.flavor || '', owned: true,
+      cols: ROOM_SLOT_COLS,
+      slots: room.slots.map((bench, slot) => {
+        if (!bench) return { slot, empty: true };
+        const size = BENCH_MAP[bench.type];
+        return {
+          slot, empty: false, uid: bench.uid, type: bench.type, name: size.name, w: size.w, h: size.h,
+          sellRefund: Math.round(size.price * SELL_REFUND_RATE * 100) / 100,
+          canSell: bench.items.length === 0,
+          items: bench.items.map((it) => {
+            const d = INSTRUMENT_MAP[it.inst];
+            const fp = footprint(it.inst, it.rot);
+            return {
+              uid: it.uid, inst: it.inst, name: d.name, tier: d.tier, tierLabel: d.tierLabel, x: it.x, y: it.y, rot: it.rot,
+              w: fp.w, h: fp.h, flavor: d.flavor || '', bonusPct: Math.round(d.bonus * 100), maintain: d.maintain,
+              down: (lab.equipmentDown[it.inst] || 0) > 0,
+              sellRefund: Math.round(instrumentPrice(it.inst) * SELL_REFUND_RATE * 100) / 100,
+            };
+          }),
+        };
+      }),
+    };
+  });
+  const nextIdx = rooms.length;
+  const nextRoomDef = nextIdx < ROOM_MAX ? ROOMS[nextIdx] : null;
+  const nextRoom = nextRoomDef ? (() => {
+    const reason = rank < nextRoomDef.rankGate ? '需头衔 ' + nextRoomDef.rankGate : (money < nextRoomDef.price ? '经费不足' : '');
+    return { roomIdx: nextIdx, id: nextRoomDef.id, name: nextRoomDef.name, price: nextRoomDef.price, rankGate: nextRoomDef.rankGate, flavor: nextRoomDef.flavor, canBuy: !reason, reason };
+  })() : null;
+  const freeSlot = findEmptySlot(lab);
+  const benches = BENCHES.map((b) => {
+    const reason = rank < b.rankGate ? '需头衔 ' + b.rankGate : (!freeSlot ? '没有空台位' : (money < b.price ? '经费不足' : ''));
+    return { id: b.id, name: b.name, w: b.w, h: b.h, cells: b.w * b.h, price: b.price, rankGate: b.rankGate, canBuy: !reason, reason };
+  });
+  return {
+    rooms,
+    lockedRooms: ROOMS.slice(nextIdx).map((d) => ({ id: d.id, name: d.name, price: d.price, rankGate: d.rankGate, flavor: d.flavor })),
+    nextRoom,
+    benches,
+    summary: spaceSummary(lab),
+    text: { ...LAB_TEXT },
+  };
+}
+
 export function selectLab(state) {
   return {
     bonusPct: Math.round(equipmentBonus(state.lab) * 100),
     maintain: maintenanceTotal(state.lab),
     equipment: selectEquipment(state),
+    space: selectLabSpace(state),
   };
 }
 

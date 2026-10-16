@@ -10,7 +10,7 @@
 export const UI_SUBTABS = [
   { id: 'overview', label: '总览', hint: '身份、资源、论文账目、晋级进度' },
   { id: 'students', label: '学生名册', hint: '名额、学生、工资、一作' },
-  { id: 'instruments', label: '仪器台', hint: '持有量、加成、维护费' },
+  { id: 'instruments', label: '仪器台', hint: '实验室空间：房间、实验台、仪器摆放与申购' },
   { id: 'consumables', label: '耗材库', hint: '消耗模式与采购' },
 ];
 
@@ -230,7 +230,7 @@ export const UI_PAPER_SHOP = {
   honest: '购买一作＝花钱买署名，没有真实产出；越厉害的文章越贵。',
   fallbackButton: '买一篇一作',
   fallbackNote: '没取到档位价格表（vm.consts.papers.price）：购买一作暂时不可用，缺档位的请求引擎会直接拒绝。先去「学生名册」抢一篇结题产出的。',
-  integrityHint: '购买一作便宜但掉诚信；抢一作更伤人和诚信。系统不骂你，账都记在纪事里。',
+  integrityHint: '买一作要花钱、掉诚信；抢一作不花钱，但更伤人、也更伤诚信。系统不骂你，账都记在纪事里。',
 };
 
 /** 抢一作：按「结题产出的某一篇」操作 + 二次确认（数值全部由 vm.consts.papers 提供）。 */

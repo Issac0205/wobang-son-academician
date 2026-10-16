@@ -16,7 +16,8 @@ import {
   ENERGY_LOW_HEALTH_THRESHOLD, ENERGY_LOW_HEALTH_MUL,
   DEFAULT_CONSUME_MODE, SAVE_APP_ID,
 } from '../data/tuning.js';
-import { INSTRUMENTS, INST_HOLD_CAP } from '../data/instruments.js';
+import { INSTRUMENTS } from '../data/instruments.js';
+import { startingLayout } from './lab.js';
 import {
   INITIAL_HAPPINESS, DEFAULT_WAGE_TIER, MASTER_STUDY_MONTHS, PHD_STUDY_MONTHS,
   ABILITY_MIN, ABILITY_MAX, ABILITY_DEFAULT, INITIAL_STUDENT_ABILITY_MEAN_SD, INITIAL_STUDENT_TRANSLATE_RATE,
@@ -28,7 +29,8 @@ import { generateName, PROTAGONIST } from './naming.js';
 /** 存档结构版本：改动 GameState 字段时 +1，并在 save.js 的 MIGRATIONS 里补迁移。 */
 // t24：一作归属模型改变了 player.papers 的含义（v1 = 课题组全部产出，v2 = 玩家一作），
 // 所以存档口径必须 +1；旧档由 save.js 的 MIGRATIONS[1] 按可核验台账重算。
-export const STATE_VERSION = 2;
+// 1.1（LAB-SPACE §8）：lab 加 rooms/benches/items 空间结构，equipment 变为派生计数 → 2 → 3。
+export const STATE_VERSION = 3;
 
 /** 子对象/数组的工厂：只在 state.js 里出现一次，供 engine 与 save 复用。 */
 export function createStudent(overrides = {}) {
@@ -186,12 +188,12 @@ export function createState(opts = {}) {
     },
 
     lab: {
-      // SPEC：开局就有几台老设备（initCount 见 src/data/instruments.js），
-      // 这批设备的加成 = START_INST_BONUS（0.45），是初始科研效率的一部分。
+      // 1.1：开局送 A301 + 2 张标准台，initCount 的老设备自动摆上（LAB-SPACE §6）。
+      // equipment 是派生计数（由摆放重算），加成仍 = START_INST_BONUS（0.45）。
+      ...startingLayout(),
       equipment: Object.fromEntries(INSTRUMENTS.map((it) => [it.id, it.initCount])),
       equipmentDown: Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0])),
       purchaseCount: Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0])),
-      holdCap: INST_HOLD_CAP,
       consumeMulThisMonth: 1,
     },
 

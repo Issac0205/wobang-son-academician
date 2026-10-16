@@ -4,7 +4,7 @@
  * 数据全部来自 vm.projects 与 vm.market.projects；难点三种处理方式只负责发 action。
  */
 
-import { h, bar, tag, button, uiCard, uiEmpty, uiNote, uiInlineStat, uiGoto, uiNum1, uiDeltaText } from '../dom.js';
+import { h, bar, tag, button, uiCard, uiDisclosure, uiEmpty, uiNote, uiInlineStat, uiGoto, uiNum1, uiDeltaText } from '../dom.js';
 import { UI_METHOD_LABELS, UI_METHOD_FILE, UI_METHOD_TONE, UI_EMPTY, UI_ATTEMPT, UI_PROJECT_MARKET, UI_AUTO_ASSIGN, UI_LEAD } from '../copy.js';
 
 /** 三种处理方式 → data-action（写成查表，避免字符串拼接被静态检查误判）。 */
@@ -96,6 +96,7 @@ function uiProjectCard(vm, p) {
       p.overdue ? tag('逾期 ' + p.overdueMonths + ' 个月', 'bad') : null,
     ]),
     bar(p.progressPct, p.overdue ? 'bad' : 'good', p.progressPct + '%'),
+    uiDisclosure('project-' + p.instanceId, '管理项目 · 分配学生 / 处理难点（' + p.openHardpoints + '）', [
     h('div', { class: 'project-meta' }, [
       uiInlineStat('工作量', uiNum1(p.progress) + ' / ' + uiNum1(p.workload)),
       uiInlineStat('期限', p.deadlineText + (countdown ? '（' + countdown + '）' : '')),
@@ -126,6 +127,7 @@ function uiProjectCard(vm, p) {
     ]),
     uiNote('进度满工作量时自动结题：尾款到账、论文见刊；有未解决难点会按难点数量降档。'),
     h('p', { class: 'lead-note', text: UI_LEAD.note }),
+    ]),
   ]);
 }
 

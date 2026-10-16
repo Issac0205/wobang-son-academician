@@ -9,10 +9,13 @@
  *     迁移失败一律回退为「新局」，并向玩家提示存档已损坏。
  */
 
-import { SAVE_SLOT_KEY, AUTOSAVE_ON_MONTH_END } from '../data/tuning.js';
+import { SAVE_SLOT_KEY, AUTOSAVE_ON_MONTH_END, CONSUME_MUL_SAVE_MIN, CONSUME_MUL_SAVE_MAX, CONSUME_MUL_DEFAULT } from '../data/tuning.js';
 import { STATE_VERSION, createState, createStudent, createProject, createOffer, createChronicleEntry } from './state.js';
 import { PAPER_TIER_ORDER, PLAYER_AUTHOR_ID } from '../data/papers.js';
 import { clamp, round } from './rng.js';
+import { layoutFromCounts, sanitizeRooms, countEquipment } from './lab.js';
+import { START_BENCHES } from '../data/lab.js';
+import { INSTRUMENT_IDS } from '../data/instruments.js';
 
 /** @typedef {{version:number, savedAt:number, state:any}} SaveEnvelope */
 
@@ -47,6 +50,21 @@ export const MIGRATIONS = {
     next.player.papers = counts;
     return next;
   },
+  /**
+   * v2 → v3（1.1 实验室空间，LAB-SPACE §9）：把 1.0 的按种类计数用 First-Fit Decreasing
+   * 自动摆进 A301（先放开局同款 2 张标准台），不够就**免费**补台/开房间——老玩家资产不缩水。
+   * 摆放后重算 equipment 必须与迁移前逐项相等，否则返回 null（走「读档失败」路径）。
+   */
+  2: (state) => {
+    const lab = (state && state.lab) || {};
+    const before = {};
+    for (const id of INSTRUMENT_IDS) before[id] = Math.max(0, Math.floor(Number(lab.equipment && lab.equipment[id]) || 0));
+    const layout = layoutFromCounts(before, { startBenches: START_BENCHES });
+    if (!layout) return null;
+    const after = countEquipment(layout);
+    for (const id of INSTRUMENT_IDS) if (after[id] !== before[id]) return null;
+    return { ...state, lab: { ...lab, rooms: layout.rooms, nextUid: layout.nextUid, equipment: after } };
+  },
 };
 
 /** 包装成存档信封。 */
@@ -73,6 +91,7 @@ export function hydrate(raw) {
       const step = MIGRATIONS[version];
       if (typeof step !== 'function') return null;
       migrated = step(migrated);
+      if (!migrated) return null;
       version += 1;
     }
     if (version > STATE_VERSION) return null;
@@ -141,14 +160,23 @@ export function validateState(rawState) {
 
   // 实验室
   const lab = rawState.lab || {};
-  for (const [id, count] of Object.entries(lab.equipment || {})) {
-    if (base.lab.equipment[id] !== undefined) base.lab.equipment[id] = Math.round(num(count, 0, 0, 3));
+  // 1.1：空间结构逐项校验（越界/重叠/未知类型丢弃）；equipment 一律由摆放重算，不信任存档里的计数。
+  const rooms = sanitizeRooms(lab.rooms);
+  if (rooms) {
+    base.lab.rooms = rooms.rooms;
+    base.lab.nextUid = Math.max(rooms.nextUid, Math.round(num(lab.nextUid, 1, 1, 1e6)));
+  } else if (lab.equipment && typeof lab.equipment === 'object') {
+    const layout = layoutFromCounts(lab.equipment, { startBenches: START_BENCHES });
+    if (layout) { base.lab.rooms = layout.rooms; base.lab.nextUid = layout.nextUid; }
   }
+  base.lab.equipment = countEquipment(base.lab);
+  // t3（t4 暴露的 1.0 潜伏 bug）：下月耗材倍率是事件写进 lab 的，读档不恢复就会丢掉事件效果。
+  base.lab.consumeMulThisMonth = round(num(lab.consumeMulThisMonth, CONSUME_MUL_DEFAULT, CONSUME_MUL_SAVE_MIN, CONSUME_MUL_SAVE_MAX), 3);
   for (const [id, months] of Object.entries(lab.equipmentDown || {})) {
     if (base.lab.equipmentDown[id] !== undefined) base.lab.equipmentDown[id] = Math.round(num(months, 0, 0, 36));
   }
   for (const [id, count] of Object.entries(lab.purchaseCount || {})) {
-    if (base.lab.purchaseCount[id] !== undefined) base.lab.purchaseCount[id] = Math.round(num(count, 0, 0, 3));
+    if (base.lab.purchaseCount[id] !== undefined) base.lab.purchaseCount[id] = Math.round(num(count, 0, 0, 999));
   }
 
   // 学生 / 项目 / 市场

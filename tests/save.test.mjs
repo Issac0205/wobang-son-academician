@@ -38,7 +38,7 @@ function playMonths(state, n) {
 }
 
 /* ── 0 版本字段 ── */
-  s.eq(STATE_VERSION, 2, 'StateVersion 存在且为 2（t24 一作归属模型把口径 +1）');
+  s.eq(STATE_VERSION, 3, 'StateVersion 存在且为 3（t24 一作归属 +1；1.1 实验室空间 +1）');
 s.eq(SAVE_VERSION, STATE_VERSION, 'save.js 的 SAVE_VERSION 跟随 STATE_VERSION');
 s.eq(typeof STATE_VERSION, 'number', 'save.js 再导出 STATE_VERSION（契约 §3.5）');
 
@@ -166,14 +166,14 @@ function firstDiff(a, b) {
    v1 的 player.papers 是「课题组全部产出」，v2 起只数「老板是一作」。旧档无法逐篇反推署名，
    但可以按可核验台账重算：老板真正拿到的一作只有买/抢（每篇在 papersFirst 里恰好记一次）。 */
 {
-  s.eq(STATE_VERSION, 2, 'STATE_VERSION 随一作归属模型 +1（1 → 2）');
+  s.ok(STATE_VERSION >= 2, 'STATE_VERSION 至少经过一作归属模型 +1（1 → 2）');
   const legacy = freshGame(mods, 'save-v1');
   legacy.player.papers = { top: 0, q1: 9, q2: 24, q3: 10, q4: 3 };   // v1 口径：全部产出
   legacy.player.papersFirst = { top: 1, q1: 2, q2: 0, q3: 0, q4: 0 };  // 买/抢来的一作
   legacy.player.totalIF = 777;
   const back = hydrate({ version: 1, savedAt: 1, state: legacy });
   s.ok(back !== null, 'v1 存档仍能读进来（迁移链 1 → 2）');
-  s.eq(back.version, 2, '迁移后版本号 = 当前 STATE_VERSION');
+  s.eq(back.version, STATE_VERSION, '迁移后版本号 = 当前 STATE_VERSION（链 1 → 2 → 3）');
   s.eq(back.player.papers.q1, 2, 'v1→v2：一区一作按可核验台账重算（本档只有买来的 2 篇）');
   s.eq(back.player.papers.top, 1, 'v1→v2：正刊一作同样是买来的那 1 篇');
   s.eq(back.player.papers.q2, 0, 'v1→v2：学生一作的 24 篇二区不再计入老板一作');

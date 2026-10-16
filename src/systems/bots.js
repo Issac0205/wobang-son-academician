@@ -15,7 +15,9 @@ import { ACTIONS, reduce, pendingDeferStudents } from '../core/engine.js';
 import { createState } from '../core/state.js';
 import { rankOf } from '../data/ranks.js';
 import { PROJECT_MAP, PROJECTS } from '../data/projects.js';
-import { INSTRUMENTS, INSTRUMENT_MAP, INST_HOLD_CAP } from '../data/instruments.js';
+import { INSTRUMENTS, INSTRUMENT_MAP } from '../data/instruments.js';
+import { BENCH_MAP, ROOMS } from '../data/lab.js';
+import { findSpot, findEmptySlot } from '../core/lab.js';
 import { HARDPOINT_METHODS, TEAM_MONEY, SOLO_MONEY, TEAM_MIN_STUDENTS, MAX_PROJECTS_PER_STUDENT } from '../data/hardpoints.js';
 import { PAPER_TIER_ORDER } from '../data/papers.js';
 import { CONSUME_MODES, CONSUMABLE_PRICE_PER_UNIT, CONSUMABLE_BUY_PACK, MAX_MONTHS } from '../data/tuning.js';
@@ -248,6 +250,19 @@ function instrumentWishlist(state) {
   return want;
 }
 
+/** 机器人：为下一台仪器腾空间（优先大型台，没台位就申请下一间实验室）。 */
+function makeRoomFor(state, cfg) {
+  let next = state;
+  if (!findEmptySlot(next.lab)) {
+    const room = ROOMS[next.lab.rooms.length];
+    if (!room || next.player.rankIndex < room.rankGate || next.player.money < room.price + cfg.moneyReserve) return next;
+    next = send(next, ACTIONS.buyRoom());
+  }
+  const type = next.player.rankIndex >= BENCH_MAP.bench_big.rankGate ? 'bench_big' : 'bench_std';
+  if (next.player.money < BENCH_MAP[type].price + cfg.moneyReserve) return next;
+  return send(next, ACTIONS.buyBench({ type }));
+}
+
 function buyEquipment(state, cfg) {
   if (!cfg.buyEquipment) return state;
   const want = instrumentWishlist(state);
@@ -255,9 +270,13 @@ function buyEquipment(state, cfg) {
   for (const def of INSTRUMENTS) {
     const need = want.get(def.id) || 0;
     const owned = next.lab.equipment[def.id] || 0;
-    if (need === 0 || owned >= Math.min(need, INST_HOLD_CAP)) continue;
+    if (need === 0 || owned >= need) continue;
     if (next.player.rankIndex < def.tierGate) continue;
-    if (next.player.money < def.price * Math.pow(1.6, owned) + cfg.moneyReserve) continue;
+    if (next.player.money < def.price + cfg.moneyReserve) continue;
+    // 1.1 空间：放不下先补一张实验台（台位满再申请房间），钱不够就算了
+    if (!findSpot(next.lab, def.id)) next = makeRoomFor(next, cfg);
+    if (!findSpot(next.lab, def.id)) continue;
+    if (next.player.money < def.price + cfg.moneyReserve) continue;
     next = send(next, ACTIONS.buyEquipment({ id: def.id }));
   }
   return next;

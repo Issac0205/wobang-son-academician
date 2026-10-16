@@ -16,6 +16,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { installDomShim, installLocalStorage } from './lib/dom-shim.mjs';
+import { INSTRUMENTS } from '../src/data/instruments.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const checks = [];
@@ -202,7 +203,7 @@ try {
       check(text.indexOf(keyword) >= 0, '课题组分栏「' + keyword + '」渲染正常', '课题组分栏「' + keyword + '」没有渲染');
       if (section === 'instruments') {
         const buys = findAllByAction($('panel-lab'), 'buy-equipment');
-        check(buys.length === 8, '仪器台渲染 8 种仪器（各带购买价/维护费/加成说明）', '仪器数量不对：' + buys.length);
+        check(buys.length === INSTRUMENTS.length, '仪器台渲染全部仪器（' + INSTRUMENTS.length + ' 种，各带购买价/维护费/加成说明）', '仪器数量不对：' + buys.length);
       }
       if (section === 'consumables') {
         const modes = findAllByAction($('panel-lab'), 'consume-mode');
@@ -563,7 +564,9 @@ try {
 
     /* 被举报：走真实机制（诚信归零 → 结算判定坏结局） */
     const stB = clone(store.getState());
-    stB.player.integrity = 0;
+    // 设为足够负的值：autoResolveEvents 结算随机事件时，任何事件的默认选项（诚信增量）都无法把它抬回 0 以上，
+    // 从而保证「integrity <= 0」的坏结局条件确定触发，消除种子相关的偶发失败。
+    stB.player.integrity = -9999;
     replaceState(stB);
     step({ autoResolveEvents: true });
     const badText = textOf($('modal-root'));

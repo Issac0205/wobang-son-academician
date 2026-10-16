@@ -264,3 +264,11 @@ export function uiDeltaTone(v) {
   if (!Number.isFinite(n) || Math.round(n * 10) === 0) return 'flat';
   return n > 0 ? 'up' : 'down';
 }
+// Presentation-only disclosure memory survives store-driven rerenders.
+const uiDisclosureState = new Map();
+export function uiDisclosure(key, label, children, initiallyOpen) {
+  const mobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 600px)').matches;
+  const open = uiDisclosureState.has(key) ? uiDisclosureState.get(key) : (initiallyOpen === undefined ? !mobile : initiallyOpen);
+  const node = h('details', { class: 'ledger-details', attrs: open ? { open: '' } : {}, on: { toggle: (ev) => uiDisclosureState.set(key, ev.target.open) } }, [h('summary', { text: label }), h('div', { class: 'disclosure-body' }, children)]);
+  return node;
+}

@@ -1,5 +1,5 @@
 /**
- * projects.js —— 10 种项目模板 + 市场生成规则 + 承接门槛（BALANCE §5 / GDD §5）
+ * projects.js —— 13 种项目模板 + 市场生成规则 + 承接门槛（BALANCE §5 / GDD §5）
  * SPEC 硬性：市场同时有国家项目与企业项目；每个项目有规定完成时间、当前进度、难点；
  *          承接得定金、完成得尾款；越高端对仪器要求越高。
  */
@@ -49,6 +49,19 @@ export const PROJECTS = [
     workload: 1400, limitMonths: 36, money: 1100, depositRate: 0.30, consumablePerMonth: 18.0,   // t30 §18.11：W 2000→1400、期限 48→36、耗材 24→18、合同 800→1100（IF/(W×0.85)=0.1265 ✓）
     papers: ['PE','PE','PE','PE','PE','PE','PE','PE','PE','PE','PA','PA','PA','PA','PA','PA','PB','PB','PB','PB','PC','PC','PD','PD'], require: { centrifuge: 1, shaker: 1, hood: 1, hplc: 2, elisa: 2, gc: 1, ms: 1 }, expectedIF: 150.53, q1Expect: 6.44, topExpect: 0.26,
     hint: '研究：项目千万级、负责人 ≤60 岁 [C]。三层架构：专项-项目-课题，写本子的人在第一层。' },
+  // v1.2：沿用 E2/E3/N3 同档工作量、资金与论文槽位，不改原项目难度。
+  { id: 'E5', name: '横向·紫外可见定量检测', category: 'enterprise', tier: 1,
+    workload: 170, limitMonths: 8, money: 30, depositRate: 0.40, consumablePerMonth: 2.0,
+    papers: ['PC', 'PD'], require: { centrifuge: 1, uvvis: 1 }, expectedIF: 6.16, q1Expect: 0, topExpect: 0,
+    hint: '建立标准曲线，测定样品浓度；需分光光度计完成定量检测。' },
+  { id: 'E6', name: '横向·分子检测方法开发', category: 'enterprise', tier: 2,
+    workload: 380, limitMonths: 12, money: 80, depositRate: 0.40, consumablePerMonth: 5.0,
+    papers: ['PC', 'PD', 'PD'], require: { centrifuge: 1, hood: 1, pcr: 1, gel: 1 }, expectedIF: 8.60, q1Expect: 0, topExpect: 0,
+    hint: 'PCR 扩增后用凝胶成像验证条带；两台设备齐备才能承接。' },
+  { id: 'N7', name: '国家·蛋白纯化与功能研究', category: 'nation', tier: 3,
+    workload: 760, limitMonths: 30, money: 225, depositRate: 0.30, consumablePerMonth: 8.0,
+    papers: ['PB','PB','PB','PB','PB','PB','PC','PC','PC','PD','PD','PD'], require: { centrifuge: 1, shaker: 1, hood: 1, akta: 1, uvvis: 1, elisa: 1 }, expectedIF: 50.01, q1Expect: 0.90, topExpect: 0,
+    hint: 'AKTA 分离纯化、紫外定量、酶标功能验证，串起完整蛋白研究流程。' },
 ];
 
 export const PROJECT_MAP = Object.fromEntries(PROJECTS.map((p) => [p.id, p]));

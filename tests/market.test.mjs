@@ -84,7 +84,21 @@ s.ok(MIN_ACCEPTABLE_PROJECT_OFFERS >= 1, '「市场里始终有至少 N 个能�
   st = reduce(st, ACTIONS.advanceMonth({ autoResolveEvents: true }));
   s.ok(st.market.pool.some((o) => o.offerId === 'oLocked'), '锁定的 offer 不受有效期影响');
 }
-void PROJECT_OFFER_TTL_MONTHS;
+// v1.2：项目在到期月撤下，锁定例外，不能把三个月 TTL 算成四个月。
+{
+  let st = freshGame(mods, 'project-expiry-boundary');
+  const offer = st.market.pool.find((o) => o.kind === 'project');
+  st.market.pool = [
+    { ...offer, offerId: 'expires-now', createdMonthIndex: 0, expiresMonthIndex: PROJECT_OFFER_TTL_MONTHS },
+    { ...offer, offerId: 'locked-now', createdMonthIndex: 0, expiresMonthIndex: PROJECT_OFFER_TTL_MONTHS, locked: true },
+    { ...offer, offerId: 'expires-next', createdMonthIndex: 1, expiresMonthIndex: PROJECT_OFFER_TTL_MONTHS + 1 },
+  ];
+  st.calendar.monthIndex = PROJECT_OFFER_TTL_MONTHS;
+  st = reduce(st, ACTIONS.advanceMonth({ autoResolveEvents: true }));
+  s.ok(!st.market.pool.some((o) => o.offerId === 'expires-now'), '项目到期月立即撤下释放供给席位');
+  s.ok(st.market.pool.some((o) => o.offerId === 'locked-now'), '锁定项目到期仍保留');
+  s.ok(st.market.pool.some((o) => o.offerId === 'expires-next'), '未到期项目仍保留');
+}
 
 /* ── 4 中期停滞回归：速通路线不存在连续 6 个月以上的零进展段 ── */
 {

@@ -12,6 +12,7 @@ import { INTEGRITY_DELTA } from '../src/data/tuning.js';
 import { projectTail, openHardpointCount, projectProgressPct, studentBaseProgress } from '../src/core/formulas.js';
 import { PAPER_TIER_ORDER, PLAYER_AUTHOR_ID } from '../src/data/papers.js';
 import { buildViewModel } from '../src/core/viewmodel.js';
+import { EVENTS } from '../src/data/events.js';
 
 const mods = { createState, reduce, ACTIONS };
 const s = createSuite('项目系统');
@@ -365,6 +366,8 @@ function autoAssignSetup(seed) {
   // 9.2 集成：引擎确实把「该生当前在研项目数」传进了公式（不是只改了纯函数）
   const run = (count) => {
     const g = freshGame(mods, 't30-conserve-run');
+    // 机制 fixture：全部事件处于冷却期，避免断电扣进度污染产能守恒比较。
+    for (const ev of EVENTS) g.eventState.lastFiredMonth[ev.id] = g.calendar.monthIndex;
     g.player.money = 5000;
     g.player.consumable = 5000;
     g.lab.equipment = { centrifuge: 2, shaker: 2, hplc: 2, hood: 2, elisa: 2, gc: 2, ms: 2, bath: 2 };
@@ -380,11 +383,13 @@ function autoAssignSetup(seed) {
     for (const p of list) p.assignedStudentIds = [who.id];
     const before = new Map(list.map((p) => [p.instanceId, p.progress]));
     const after = reduce(g, ACTIONS.advanceMonth({ autoResolveEvents: true }));
+    s.eq(after.stats.lastReceipt.events.length, 0, '守恒 fixture 不受随机事件影响');
     return after.projects.reduce((n, p) => n + (before.has(p.instanceId) ? p.progress - before.get(p.instanceId) : 0), 0);
   };
   const t1 = run(1);
   const t3 = run(3);
   s.ok(t1 > 0, '对照组（1 个项目）当月确实有进度', t1.toFixed(2));
+  s.near(t3, t1, 0.02, '无事件时三项目总产出等于单项目（仅逐项目分币舍入误差）');
   s.ok(t3 <= t1 * 1.35, '守恒（集成）：1 人做 3 个项目的当月总产出 ≤ 做 1 个项目的 1.35 倍（旧实现是 ~3 倍）',
     '1 项目 ' + t1.toFixed(2) + ' / 3 项目合计 ' + t3.toFixed(2) + '（比值 ' + (t3 / t1).toFixed(2) + '；随机事件会带来少量扰动）');
 }

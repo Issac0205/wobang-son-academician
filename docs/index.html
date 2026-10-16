@@ -1,9 +1,9 @@
 <!doctype html>
-<!-- 我帮儿子评院士 v1.0.0 · 单文件构建 · 2026-10-16T04:35:21.384Z · 源码：35 个模块（纯前端 ES Module，零构建依赖） -->
+<!-- 我帮儿子评院士 v1.2.0 · 单文件构建 · 2026-10-16T08:21:56.830Z · 源码：38 个模块（纯前端 ES Module，零构建依赖） -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>我帮儿子评院士 · 课题组月度台账</title>
 <meta name="description" content="把马小程从副研究员一路刷成院士的经营养成小游戏：经费、仪器、学生、项目、论文账目，全在这本台账里。" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23b0392c'/%3E%3Ctext x='32' y='45' font-size='40' font-family='serif' text-anchor='middle' fill='%23fffdf7'%3E%E8%AF%84%3C/text%3E%3C/svg%3E" />
@@ -84,6 +84,12 @@
   --r-2: 5px;
   --r-3: 9px;
   --r-4: 14px;
+  /* 历史别名：t26/t34/t35 的样式引用过但从未定义，补上让圆角一致 */
+  --radius-xs: var(--r-1);
+  --radius-sm: var(--r-2);
+
+  /* 1.1 实验室网格单元 */
+  --cell: 34px;
   --sh-1: 0 1px 0 rgba(70, 58, 34, 0.06);
   --sh-2: 0 4px 14px rgba(64, 52, 28, 0.10);
   --sh-3: 0 22px 50px rgba(46, 36, 18, 0.28);
@@ -152,7 +158,7 @@ button { font: inherit; color: inherit; }
 }
 
 #month-report { grid-column: 1 / -1; }
-#panels { min-width: 0; display: grid; gap: var(--sp-4); }
+#panels { min-width: 0; display: grid; gap: var(--sp-5); align-content: start; }
 
 #chronicle-wrap {
   min-width: 0;
@@ -346,7 +352,7 @@ button { font: inherit; color: inherit; }
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-4);
-  padding: var(--sp-4) var(--sp-5);
+  padding: var(--sp-4) var(--sp-5) var(--sp-3);
   background: linear-gradient(180deg, var(--paper-tint), rgba(255,255,255,0));
   border-bottom: 1px solid var(--line);
 }
@@ -357,7 +363,7 @@ button { font: inherit; color: inherit; }
   letter-spacing: 0.06em;
   color: var(--ink-strong);
 }
-.card-sub { font-size: var(--fs-sm); color: var(--ink-soft); margin-top: 2px; }
+.card-sub { font-size: var(--fs-sm); color: var(--ink-soft); margin-top: var(--sp-1); line-height: 1.6; max-width: 72ch; }
 .card-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: flex-end; }
 .card-body { padding: var(--sp-4) var(--sp-5) var(--sp-5); display: grid; gap: var(--sp-4); }
 
@@ -379,9 +385,9 @@ button { font: inherit; color: inherit; }
 .kv.tone-warn .kv-v { color: var(--warn); }
 .kv.tone-bad .kv-v { color: var(--bad); }
 
-.slot-row { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); padding: var(--sp-2) var(--sp-3); background: var(--paper-sunken); border: 1px dashed var(--line-strong); border-radius: var(--r-2); }
+.slot-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2) var(--sp-6); padding: var(--sp-3) var(--sp-4); background: var(--paper-sunken); border: 1px dashed var(--line-strong); border-radius: var(--r-2); }
 .muted { color: var(--ink-faint); font-size: var(--fs-sm); }
-.note { font-size: var(--fs-sm); color: var(--ink-soft); border-left: 3px solid var(--line-strong); padding-left: var(--sp-3); }
+.note { font-size: var(--fs-sm); color: var(--ink-soft); border-left: 3px solid var(--line-strong); padding: 2px 0 2px var(--sp-3); line-height: 1.7; }
 .note.tone-warn { border-left-color: var(--warn); color: var(--warn); }
 .empty { font-size: var(--fs-sm); color: var(--ink-soft); background: var(--paper-sunken); border: 1px dashed var(--line-strong); border-radius: var(--r-2); padding: var(--sp-4); }
 .chip { display: inline-flex; align-items: center; gap: 3px; padding: 1px var(--sp-2); border-radius: var(--r-1); font-size: var(--fs-xs); border: 1px solid var(--line-strong); background: var(--mute-soft); color: var(--ink-soft); white-space: nowrap; }
@@ -753,6 +759,127 @@ button { font: inherit; color: inherit; }
 .lead-note { margin: var(--sp-1) 0 0; font-size: var(--fs-xs); color: var(--ink-soft); }
 .paper-tile-grabbed { font-size: var(--fs-xs); color: var(--seal-deep); margin-left: 2px; }
 .paper-row-legend { margin: var(--sp-1) 0 0; font-size: var(--fs-xs); color: var(--ink-faint); line-height: 1.6; }
+
+/* ───────────────── 1.1：实验室空间（房间 → 台位 → 实验台网格 → 仪器） ───────────────── */
+.card-lab { border-top: 3px solid var(--jade); }
+.rooms { display: grid; gap: var(--sp-5); }
+.room { border: 1px solid var(--line-strong); border-radius: var(--r-3); background: var(--paper-sunken);
+  background-image: repeating-linear-gradient(0deg, rgba(120,100,60,0.05) 0 1px, transparent 1px 22px), repeating-linear-gradient(90deg, rgba(120,100,60,0.05) 0 1px, transparent 1px 22px);
+  padding: var(--sp-4); display: grid; gap: var(--sp-4); }
+.room-head { display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
+.room-seal { font-family: var(--font-num); font-weight: 700; font-size: var(--fs-sm); letter-spacing: 0.06em; color: var(--seal); border: 2px solid var(--seal); border-radius: var(--r-1); padding: 1px var(--sp-2); background: var(--paper-card); transform: rotate(-2deg); }
+.room-seal.is-locked { color: var(--ink-faint); border-color: var(--line-strong); border-style: dashed; transform: none; }
+.room-title-wrap { display: grid; flex: 1 1 220px; min-width: 0; }
+.room-name { font-family: var(--font-title); font-size: var(--fs-lg); letter-spacing: 0.06em; }
+.room-flavor { font-size: var(--fs-xs); color: var(--ink-faint); }
+.room-count { font-family: var(--font-num); font-size: var(--fs-xs); color: var(--ink-soft); }
+.room-floor { display: grid; gap: var(--sp-4); }
+.room-locked { background: transparent; background-image: none; border-style: dashed; }
+.room-later, .room-maxed { font-size: var(--fs-xs); color: var(--ink-faint); }
+
+.bench { display: grid; gap: var(--sp-2); align-content: start; padding: var(--sp-3); background: var(--paper-card); border: 1px solid var(--line-strong); border-radius: var(--r-2); box-shadow: var(--sh-1); min-width: 0; }
+.bench-head { display: flex; align-items: baseline; gap: var(--sp-3); flex-wrap: wrap; }
+.bench-name { font-size: var(--fs-sm); letter-spacing: 0.06em; }
+.bench-size { font-family: var(--font-num); font-size: var(--fs-xs); color: var(--ink-faint); flex: 1 1 auto; }
+.bench-grid { display: grid; gap: 3px; padding: 4px; width: max-content; max-width: 100%; background: #e9dfc8; border: 1px solid var(--line-strong); border-radius: var(--r-1); box-shadow: inset 0 1px 2px rgba(64,52,28,0.12); }
+.lab-cell { appearance: none; padding: 0; margin: 0; width: var(--cell); height: var(--cell); border: 1px dashed rgba(148,139,119,0.55); border-radius: 2px; background: rgba(255,253,247,0.75); cursor: default; }
+.is-holding .lab-cell { cursor: crosshair; }
+.is-holding .lab-cell:hover { background: var(--paper-tint); }
+.lab-cell.is-ok { background: var(--good-soft); border: 1px solid var(--good); }
+.lab-cell.is-bad { background: var(--bad-soft); border: 1px solid var(--bad); }
+.lab-item { appearance: none; z-index: 1; margin: 0; padding: 2px 4px; min-width: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; text-align: center;
+  font-size: var(--fs-xs); line-height: 1.2; letter-spacing: 0.04em; color: var(--ink-strong); border: 1px solid var(--blue); border-radius: 3px; background: var(--blue-soft); cursor: grab; box-shadow: 0 1px 0 rgba(0,0,0,0.08); }
+.lab-item.tone-major { border-color: var(--jade); background: var(--jade-soft); font-weight: 700; }
+.lab-item.tone-bad { border-color: var(--bad); background: var(--bad-soft); color: var(--bad); }
+.lab-item:hover { filter: brightness(0.97); }
+.lab-item.is-selected { outline: 2px solid var(--seal); outline-offset: 1px; opacity: 0.55; }
+.is-holding .lab-item { pointer-events: none; }
+.bench-empty { justify-items: start; align-content: center; min-height: calc(var(--cell) * 2 + 40px); border-style: dashed; background: transparent; box-shadow: none; }
+.bench-empty-k { font-size: var(--fs-xs); color: var(--ink-faint); letter-spacing: 0.1em; }
+.bench-empty-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+.held-bar { position: sticky; top: var(--sp-2); z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); padding: var(--sp-3) var(--sp-4); border: 1px solid var(--warn); border-left: 4px solid var(--warn); border-radius: var(--r-2); background: var(--warn-soft); box-shadow: var(--sh-2); }
+.held-bar.is-move { border-color: var(--blue); background: var(--blue-soft); }
+.held-bar[data-fit="bad"] { border-left-color: var(--bad); }
+.held-bar[data-fit="ok"] { border-left-color: var(--good); }
+.held-name { font-family: var(--font-title); font-size: var(--fs-lg); }
+.held-size { font-family: var(--font-num); font-size: var(--fs-xs); color: var(--ink-soft); }
+.held-tip { font-size: var(--fs-xs); color: var(--ink-soft); flex: 1 1 260px; }
+.held-actions { display: inline-flex; gap: var(--sp-2); flex-wrap: wrap; }
+
+.fp { display: inline-grid; gap: 1px; vertical-align: middle; }
+.fp-cell { width: 8px; height: 8px; background: var(--ink-faint); border-radius: 1px; }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: var(--sp-3); }
+.shop-item { display: grid; gap: var(--sp-2); align-content: start; padding: var(--sp-3) var(--sp-4); background: var(--paper-tint); border: 1px solid var(--line); border-left: 3px solid var(--blue); border-radius: var(--r-2); }
+.shop-item[draggable="true"] { cursor: grab; }
+.shop-item.tone-major { border-left-color: var(--jade); }
+.shop-item.tone-major .fp-cell { background: var(--jade); }
+.shop-item.tone-minor .fp-cell { background: var(--blue); }
+.shop-item.tone-bad { border-left-color: var(--bad); }
+.shop-item.is-holding { border-color: var(--seal); background: var(--seal-soft); }
+.shop-item-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.shop-item-name { font-family: var(--font-title); font-size: var(--fs-lg); }
+.shop-item-owned { font-family: var(--font-num); font-size: var(--fs-xs); color: var(--ink-soft); margin-left: auto; }
+.shop-item-stats { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); }
+.shop-item-flavor { font-size: var(--fs-xs); color: var(--ink-faint); font-style: italic; }
+.shop-item-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+
+@media (max-width: 1100px) { .room-floor { grid-template-columns: minmax(0, 1fr) !important; } }
+@media (max-width: 560px) { :root { --cell: 28px; } }
+
+
+
+
+/* Mobile ledger: progressive disclosure without losing any actions. */
+[hidden] { display: none !important; }
+.hud-compact-title { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 0; }
+.hud-more > summary, .ledger-details > summary { cursor:pointer; min-height:44px; padding:10px 12px; color:var(--ink-strong); font-weight:600; background:var(--paper-tint); border:1px solid var(--line); border-radius:var(--r-2); }
+.disclosure-body { padding-top:12px; min-width:0; }
+.ledger-details { min-width:0; }
+.catalog-select { display:grid; gap:8px; margin-bottom:16px; }
+.catalog-select select { width:100%; min-height:44px; padding:8px; background:var(--paper-card); color:var(--ink); border:1px solid var(--line-strong); font:inherit; }
+.shop-grid { grid-template-columns:minmax(0,1fr); }
+button, summary, select { touch-action:manipulation; }
+button:focus-visible, summary:focus-visible, select:focus-visible { outline:3px solid var(--blue); outline-offset:2px; }
+button:active { filter:brightness(.94); }
+.modal { max-height:calc(100dvh - 32px); overflow:auto; overscroll-behavior:contain; }
+@media (max-width:600px) {
+ :root { --cell:44px; --fs-xs:13px; --fs-sm:14px; --fs-md:16px; --fs-lg:17px; }
+ body { font-size:16px; overflow-wrap:anywhere; }
+ #app { padding-left:max(12px,env(safe-area-inset-left)); padding-right:max(12px,env(safe-area-inset-right)); padding-bottom:calc(24px + env(safe-area-inset-bottom)); }
+ #top-bar { position:static; padding-top:env(safe-area-inset-top); }
+ #hud { padding:12px; }
+ .hud-compact-title { font-size:14px; }
+ .hud-resources { gap:8px 12px; }
+ .hud-resources > span { min-width:0; }
+ .hud-controls .btn-next { width:100%; }
+ .hud-more { margin-top:8px; }
+ #tabs { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:0; overflow:visible; padding:4px 0; }
+ .tab { min-width:0; padding:8px 2px; min-height:48px; display:flex; flex-direction:column; gap:2px; font-size:14px; }
+ .tab-badge { display:none; }
+ button, .btn, .btn-xs, .btn-sm, select, input { min-height:44px; min-width:44px; font-size:14px; white-space:normal; }
+ .btn { padding:8px 12px; }
+ #panels > section { min-width:0; }
+ .projects-intro-head, .card-head { flex-wrap:wrap; }
+ .stat, .stat-v { min-width:0; white-space:normal; }
+ .card { padding:12px; min-width:0; }
+ .card-head, .card-body, .student, .project, .room, .shop-item { min-width:0; }
+ .student-list, .project-list, .kv-grid, .kv-grid-2, .kv-grid-5 { grid-template-columns:minmax(0,1fr); }
+ .room { padding:8px; }
+ .room-title-wrap { flex-basis:140px; }
+ .room-floor { grid-template-columns:minmax(0,1fr) !important; }
+ .bench { padding:4px; }
+ .bench-grid { overflow:auto; max-width:100%; }
+ .held-bar { position:static; margin:12px 0; padding:12px; }
+ .held-actions { width:100%; gap:8px; }
+ .held-actions .btn { flex:1; }
+ .wage-row, .student-actions, .assign-row, .shop-item-actions { gap:8px; }
+ .modal-backdrop { padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom)); }
+ .modal { width:100%; max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+ .modal-actions { position:static; gap:8px; }
+ #toast-root { max-width:calc(100vw - 24px); bottom:calc(12px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion:reduce) { *, *::before, *::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; } }
 </style>
 </head>
 <body>
@@ -761,45 +888,25 @@ button { font: inherit; color: inherit; }
   <!-- ── 顶栏（粘顶）：身份、资源、操作。全部由 src/ui/hud.js 渲染 ── -->
   <div id="top-bar">
     <header id="hud" data-role="hud">
-      <div class="hud-row hud-brand-row">
-        <div class="hud-brand">
-          <span class="brand-mark" aria-hidden="true">评</span>
-          <span class="brand-text">
-            <strong>我帮儿子评院士</strong>
-            <span>课题组月度台账 · 副研究员 → 院士</span>
-          </span>
-        </div>
-        <div class="hud-line hud-identity">
+      <div class="hud-compact-title"><strong>我帮儿子评院士</strong>        <span id="hud-month"></span></div>
+      <div class="hud-row hud-resources">        <span id="hud-money"></span>        <span id="hud-consumable"></span>        <span id="hud-energy"></span></div>
+      <div class="hud-row hud-controls"><button type="button" id="btn-next-month" class="btn btn-primary btn-next" data-action="next-month">下一个月 ▶</button></div>
+      <details class="hud-more"><summary>更多资源与管理</summary>        <div class="hud-line hud-identity">
           <span id="hud-name"></span>
           <span id="hud-son"></span>
           <span id="hud-rank"></span>
-          <span id="hud-month"></span>
+          
           <span id="hud-age"></span>
           <span id="hud-phase"></span>
           <span id="hud-election" data-role="election" hidden></span>
         </div>
-      </div>
-      <div class="hud-row hud-resources">
-        <span id="hud-money"></span>
-        <span id="hud-consumable"></span>
-        <span id="hud-energy"></span>
-        <span id="hud-health"></span>
-        <span id="hud-integrity"></span>
-        <span id="hud-if"></span>
-        <span id="hud-first"></span>
-        <span id="hud-tickets"></span>
-        <span id="hud-students"></span>
-      </div>
-      <div class="hud-row hud-controls">
-        <button type="button" id="btn-next-month" class="btn btn-primary btn-next" data-action="next-month" title="进入月末结算">下一个月 ▶</button>
-        <span class="hud-controls-gap" aria-hidden="true"></span>
-        <button type="button" id="btn-help" class="btn btn-ghost" data-action="help">玩法</button>
+<div class="hud-row hud-resources">        <span id="hud-health"></span>        <span id="hud-integrity"></span>        <span id="hud-if"></span>        <span id="hud-first"></span>        <span id="hud-tickets"></span>        <span id="hud-students"></span></div><div class="hud-row hud-controls">        <button type="button" id="btn-help" class="btn btn-ghost" data-action="help">玩法</button>
         <button type="button" id="btn-save" class="btn btn-ghost" data-action="save">存档</button>
         <button type="button" id="btn-export" class="btn btn-ghost" data-action="export">导出存档</button>
         <button type="button" id="btn-import" class="btn btn-ghost" data-action="import">导入存档</button>
         <button type="button" id="btn-resign" class="btn btn-ghost" data-action="resign">下海</button>
         <button type="button" id="btn-reset" class="btn btn-ghost" data-action="reset">重开一局</button>
-      </div>
+</div></details>
     </header>
 
     <!-- ── 五个标签页：按钮只切 state.ui.tab，视图渲染进对应 panel ── -->
@@ -957,36 +1064,310 @@ const PLAYER_NAME_MAX_LENGTH = 12;    // 策划：姓名/儿子名字的长度�
 const PHASE_LABELS = { action: '行动阶段', settle: '月末结算', ended: '已结束' };
 const PHASE_ORDER = ['action', 'settle', 'ended'];
 
+/* ── 存档校验边界（t3：读档恢复 lab.consumeMulThisMonth；事件倍率可叠乘，给一个物理上限） ── */
+const CONSUME_MUL_SAVE_MIN = 0;
+const CONSUME_MUL_SAVE_MAX = 10;
+const CONSUME_MUL_DEFAULT = 1;
+
 /* ── src/data/instruments.js ── */
 /**
- * instruments.js —— 8 种仪器（BALANCE §4 / GDD §4）
- * SPEC 硬性：8 种；小幅 = 离心机/摇床/超净台/水浴锅，大幅 = 液相/质谱/酶标仪/气相；
+ * instruments.js —— 12 种仪器（原 8 种 ID 保留；v1.2 新增 4 种）
+ * v1.2：价格与月维护费单位为万元；新增仪器初始为 0。
  *          初始持有量见 initCount。
  */
 
-/** @typedef {{id:string,name:string,tier:'minor'|'major',tierLabel:string,bonus:number,initCount:number,price:number,maintain:number,tierGate:number,holdCap:number}} Instrument */
+/** @typedef {{id:string,name:string,tier:'minor'|'major',tierLabel:string,bonus:number,initCount:number,price:number,maintain:number,tierGate:number,w:number,h:number,flavor:string}} Instrument */
 
 /** @type {Instrument[]} */
 const INSTRUMENTS = [
-  { id: 'centrifuge', name: '离心机', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 1, price: 8,   maintain: 0.08, tierGate: 1, holdCap: 3 },
-  { id: 'shaker',     name: '摇床',   tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 1, price: 3,   maintain: 0.03, tierGate: 1, holdCap: 3 },
-  { id: 'hplc',       name: '液相',   tier: 'major', tierLabel: '大幅', bonus: 0.15, initCount: 1, price: 45,  maintain: 0.50, tierGate: 2, holdCap: 3 },
-  { id: 'ms',         name: '质谱',   tier: 'major', tierLabel: '大幅', bonus: 0.15, initCount: 0, price: 260, maintain: 2.50, tierGate: 4, holdCap: 3 },
-  { id: 'hood',       name: '超净台', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 2, price: 2.5, maintain: 0.02, tierGate: 1, holdCap: 3 },
-  { id: 'elisa',      name: '酶标仪', tier: 'major', tierLabel: '大幅', bonus: 0.15, initCount: 0, price: 22,  maintain: 0.20, tierGate: 2, holdCap: 3 },
-  { id: 'gc',         name: '气相',   tier: 'major', tierLabel: '大幅', bonus: 0.15, initCount: 0, price: 38,  maintain: 0.40, tierGate: 3, holdCap: 3 },
-  { id: 'bath',       name: '水浴锅', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 1, price: 0.8, maintain: 0.01, tierGate: 1, holdCap: 3 },
+  { id: 'centrifuge', name: '离心机', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 1, price: 8, maintain: 0.08, tierGate: 1, w: 1, h: 1, flavor: '转子有点偏心，转起来整张台都在抖。' },
+  { id: 'shaker', name: '摇床', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 1, price: 3, maintain: 0.03, tierGate: 1, w: 2, h: 1, flavor: '通宵摇菌，声音像一台老洗衣机。' },
+  { id: 'hplc', name: '液相', tier: 'major', tierLabel: '大幅', bonus: 0.15, initCount: 1, price: 45, maintain: 0.50, tierGate: 2, w: 2, h: 2, flavor: '色谱柱比学生还金贵。' },
+  { id: 'ms', name: '质谱', tier: 'major', tierLabel: '大幅', bonus: 0.15, initCount: 0, price: 260, maintain: 2.50, tierGate: 4, w: 3, h: 2, flavor: '真空泵一开，整层楼都知道你有钱了。' },
+  { id: 'hood', name: '超净台', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 2, price: 2.5, maintain: 0.02, tierGate: 1, w: 2, h: 1, flavor: '紫外灯记得关。' },
+  { id: 'elisa', name: '酶标仪', tier: 'major', tierLabel: '大幅', bonus: 0.15, initCount: 0, price: 22, maintain: 0.20, tierGate: 2, w: 2, h: 1, flavor: '96 孔板排队等读数。' },
+  { id: 'gc', name: '气相', tier: 'major', tierLabel: '大幅', bonus: 0.15, initCount: 0, price: 38, maintain: 0.40, tierGate: 3, w: 2, h: 2, flavor: '载气钢瓶得用链子拴在墙上。' },
+  { id: 'bath', name: '水浴锅', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 1, price: 0.8, maintain: 0.01, tierGate: 1, w: 1, h: 1, flavor: '常年 37℃，冬天大家都来暖手。' },
+  // v1.2 策划值：固定价，科研加成仍受原全局上限约束。
+  { id: 'akta', name: 'AKTA蛋白纯化系统', tier: 'major', tierLabel: '大幅', bonus: 0.15, initCount: 0, price: 65, maintain: 0.65, tierGate: 3, w: 2, h: 2, flavor: '层析峰终于分开，收集管还得一支支编号。' },
+  { id: 'uvvis', name: '紫外可见分光光度计', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 0, price: 6, maintain: 0.06, tierGate: 1, w: 1, h: 1, flavor: '先调空白再测样品，比色皿透光面别用手摸。' },
+  { id: 'pcr', name: 'PCR仪', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 0, price: 12, maintain: 0.12, tierGate: 2, w: 1, h: 1, flavor: '扩增跑了一夜，梦里还在调退火温度。' },
+  { id: 'gel', name: '凝胶成像系统', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 0, price: 10, maintain: 0.10, tierGate: 2, w: 2, h: 1, flavor: '条带清楚才算数，过曝的胶图不能交差。' },
 ];
 
 const INSTRUMENT_MAP = Object.fromEntries(INSTRUMENTS.map((it) => [it.id, it]));
 const INSTRUMENT_IDS = INSTRUMENTS.map((it) => it.id);
 
-const INST_PRICE_GROWTH = 1.6;   // 第 n 台价 = price * 1.6^(n-1)
-const INST_HOLD_CAP = 3;
+// 1.1（LAB-SPACE §5）：固定价、取消持有上限——约束改由实验室空间承担。
+// w×h = 占格（可旋转 90°）。常量保留，避免旧引用报错。
+const INST_PRICE_GROWTH = 1;    // 不再涨价
+const INST_HOLD_CAP = Infinity; // 不再限台数
 const INST_BONUS_CAP = 0.90;     // 全仪器加成总和上限
 const INST_COEF_BASE = 1.00;
 const START_INST_BONUS = 0.45;   // SPEC 初始持有量推导值（离心机.06+摇床.06+液相.15+超净台.12+水浴锅.06）
 const TEMP_BROKEN_BONUS_MUL = 0; // 停机当月该仪器贡献倍率
+
+/* ── src/data/lab.js ── */
+/**
+ * lab.js —— 1.1 实验室空间（docs/LAB-SPACE.md §3/§4/§7）
+ * 层级：实验室 room（4 台位）→ 实验台 bench（W×H 网格）→ 仪器 item（w×h，可旋转）。
+ * 只放数据，不 import 任何东西（check.mjs §7）。
+ */
+
+const ROOM_SLOTS = 4;            // 每间实验室台位数（2×2 平面）
+const ROOM_SLOT_COLS = 2;
+const ROOM_MAX = 4;
+
+/** 第 i 间实验室（下标 0 起）；price 固定；rankGate = 购买所需 rankIndex */
+const ROOMS = [
+  { id: 'A301', name: '主楼 A301',     price: 0,   rankGate: 0, flavor: '走廊尽头那间，窗外是锅炉房。' },
+  { id: 'A302', name: '主楼 A302',     price: 60,  rankGate: 1, flavor: '隔壁课题组退休腾出来的，墙上还贴着旧海报。' },
+  { id: 'B205', name: '实验楼 B205',   price: 150, rankGate: 2, flavor: '新楼，有独立通风，学生终于不用排队用超净台。' },
+  { id: 'C101', name: '公共平台 C101', price: 300, rankGate: 3, flavor: '一楼承重地面，大型仪器专用。' },
+];
+
+const BENCHES = [
+  { id: 'bench_std', name: '标准实验台', w: 4, h: 2, price: 4,  rankGate: 0 },
+  { id: 'bench_big', name: '大型仪器台', w: 4, h: 3, price: 12, rankGate: 2 },
+];
+const BENCH_MAP = Object.fromEntries(BENCHES.map((b) => [b.id, b]));
+
+const SELL_REFUND_RATE = 0.5;    // 仪器/实验台出售退款比例
+const START_BENCHES = ['bench_std', 'bench_std'];  // 开局 A301 的台子
+
+/** 迁移/自动摆放新建台子时：单件 ≥ 该格数，或剩余需求 ≥ 该格数 → 用大型台（LAB-SPACE §9.3） */
+const BIG_BENCH_ITEM_CELLS = 6;
+const BIG_BENCH_DEMAND_CELLS = 8;
+
+/** 沉浸文案（§10） */
+const LAB_TEXT = {
+  full: '台面上已经挤不下了。再加一张实验台，或者去申请一间新实验室。',
+  badSpot: '这个位置放不下：越界了，或者和别的仪器挤在一起。',
+  noSlot: '实验室的台位都占满了，先去申请一间新实验室。',
+  roomsMaxed: '学院已经批不出更多房间了。',
+  benchNotEmpty: '台上还有仪器，先把仪器搬走或卖掉再拆台。',
+};
+
+/* ── src/core/lab.js ── */
+/**
+ * core/lab.js —— 1.1 实验室空间（docs/LAB-SPACE.md §8/§9）纯函数
+ *
+ * 结构：lab.rooms[i] = { id, slots: [bench|null × ROOM_SLOTS] }
+ *       bench = { uid, type, items: [{ uid, inst, x, y, rot }] }   rot=true 时占 h×w
+ *       lab.nextUid：台子/仪器共用的流水号
+ *       lab.equipment：派生计数（recountEquipment 重算），formulas/rules/bots 照用。
+ */
+
+
+
+
+/** 仪器在给定朝向下的占格。 */
+function footprint(instId, rot) {
+  const def = INSTRUMENT_MAP[instId];
+  if (!def) return null;
+  return rot ? { w: def.h, h: def.w } : { w: def.w, h: def.h };
+}
+
+function instrumentCells(instId) {
+  const def = INSTRUMENT_MAP[instId];
+  return def ? def.w * def.h : 0;
+}
+
+/** 不越界 && 不与台上其他仪器重叠（ignoreUid = 正在挪动的那台自己）。 */
+function fits(bench, w, h, x, y, ignoreUid) {
+  const size = bench && BENCH_MAP[bench.type];
+  if (!size) return false;
+  if (!Number.isInteger(x) || !Number.isInteger(y) || !Number.isInteger(w) || !Number.isInteger(h)) return false;
+  if (w <= 0 || h <= 0 || x < 0 || y < 0 || x + w > size.w || y + h > size.h) return false;
+  for (const it of bench.items || []) {
+    if (ignoreUid && it.uid === ignoreUid) continue;
+    const fp = footprint(it.inst, it.rot);
+    if (!fp) continue;
+    if (x < it.x + fp.w && it.x < x + w && y < it.y + fp.h && it.y < y + h) return false;
+  }
+  return true;
+}
+
+/** 在一张台子上按 (y, x) 扫描找第一个可放位置：先试不旋转，再试旋转。 */
+function findSpotOnBench(bench, instId, ignoreUid) {
+  const size = bench && BENCH_MAP[bench.type];
+  const def = INSTRUMENT_MAP[instId];
+  if (!size || !def) return null;
+  const tries = def.w === def.h ? [false] : [false, true];
+  for (const rot of tries) {
+    const fp = footprint(instId, rot);
+    for (let y = 0; y + fp.h <= size.h; y += 1) {
+      for (let x = 0; x + fp.w <= size.w; x += 1) {
+        if (fits(bench, fp.w, fp.h, x, y, ignoreUid)) return { x, y, rot };
+      }
+    }
+  }
+  return null;
+}
+
+/** 所有台子（按房间、台位顺序），附带所在位置。 */
+function allBenches(lab) {
+  const out = [];
+  (lab.rooms || []).forEach((room, roomIdx) => {
+    (room.slots || []).forEach((bench, slot) => { if (bench) out.push({ bench, room, roomIdx, slot }); });
+  });
+  return out;
+}
+
+function findBench(lab, benchUid) {
+  return allBenches(lab).find((b) => b.bench.uid === benchUid) || null;
+}
+
+function findItem(lab, itemUid) {
+  for (const loc of allBenches(lab)) {
+    const item = loc.bench.items.find((it) => it.uid === itemUid);
+    if (item) return { ...loc, item };
+  }
+  return null;
+}
+
+/** 全实验室第一个能放下该仪器的位置；没有返回 null。 */
+function findSpot(lab, instId) {
+  for (const loc of allBenches(lab)) {
+    const spot = findSpotOnBench(loc.bench, instId);
+    if (spot) return { benchUid: loc.bench.uid, ...spot };
+  }
+  return null;
+}
+
+/** 第一个空台位（已购房间内）。 */
+function findEmptySlot(lab) {
+  const rooms = lab.rooms || [];
+  for (let r = 0; r < rooms.length; r += 1) {
+    const slots = rooms[r].slots || [];
+    for (let s = 0; s < slots.length; s += 1) if (!slots[s]) return { roomIdx: r, slot: s };
+  }
+  return null;
+}
+
+/** 由摆放重算按种类计数（= 1.0 的 lab.equipment）。 */
+function countEquipment(lab) {
+  const counts = Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0]));
+  for (const { bench } of allBenches(lab)) {
+    for (const it of bench.items || []) if (counts[it.inst] !== undefined) counts[it.inst] += 1;
+  }
+  return counts;
+}
+
+function recountEquipment(lab) {
+  lab.equipment = countEquipment(lab);
+  return lab;
+}
+
+function newRoom(index) {
+  const def = ROOMS[index];
+  return { id: def ? def.id : 'R' + (index + 1), slots: Array.from({ length: ROOM_SLOTS }, () => null) };
+}
+
+/** 空间汇总（UI/机器人用）。 */
+function spaceSummary(lab) {
+  let cells = 0;
+  let used = 0;
+  for (const { bench } of allBenches(lab)) {
+    const size = BENCH_MAP[bench.type];
+    cells += size.w * size.h;
+    for (const it of bench.items) used += instrumentCells(it.inst);
+  }
+  const slotsTotal = (lab.rooms || []).length * ROOM_SLOTS;
+  const benches = allBenches(lab).length;
+  return { rooms: (lab.rooms || []).length, roomMax: ROOM_MAX, slotsTotal, slotsFree: slotsTotal - benches, benches, cells, used, free: cells - used };
+}
+
+/**
+ * First-Fit Decreasing 自动摆放（LAB-SPACE §9）：把计数展开成仪器列表，按格数降序
+ * （同格数按 INSTRUMENTS 顺序）逐台找位；放不下就在下一个空台位**免费**建台，
+ * 台位满就**免费**开下一间（最多 ROOM_MAX 间）。用于新开局与 v2→v3 迁移。
+ * @param {Record<string, number>} counts
+ * @param {{startBenches?: string[]}} [opts]
+ * @returns {{rooms:any[], nextUid:number} | null} 放不下（超过 4 间）返回 null
+ */
+function layoutFromCounts(counts, opts = {}) {
+  const lab = { rooms: [newRoom(0)], nextUid: 1 };
+  const addBench = (type) => {
+    let spot = findEmptySlot(lab);
+    if (!spot) {
+      if (lab.rooms.length >= ROOM_MAX) return null;
+      lab.rooms.push(newRoom(lab.rooms.length));
+      spot = findEmptySlot(lab);
+    }
+    const bench = { uid: 'b' + lab.nextUid, type, items: [] };
+    lab.nextUid += 1;
+    lab.rooms[spot.roomIdx].slots[spot.slot] = bench;
+    return bench;
+  };
+  for (const type of opts.startBenches || []) if (BENCH_MAP[type]) addBench(type);
+  const order = INSTRUMENTS.map((d, i) => ({ id: d.id, i, cells: d.w * d.h }))
+    .sort((a, b) => (b.cells - a.cells) || (a.i - b.i));
+  const queue = [];
+  for (const o of order) {
+    const n = Math.max(0, Math.floor(Number(counts && counts[o.id]) || 0));
+    for (let k = 0; k < n; k += 1) queue.push(o.id);
+  }
+  let demand = queue.reduce((sum, id) => sum + instrumentCells(id), 0);
+  for (const instId of queue) {
+    let placed = findSpot(lab, instId);
+    if (!placed) {
+      const cells = instrumentCells(instId);
+      const type = cells >= BIG_BENCH_ITEM_CELLS || demand >= BIG_BENCH_DEMAND_CELLS ? 'bench_big' : 'bench_std';
+      const bench = addBench(type);
+      if (!bench) return null;
+      const spot = findSpotOnBench(bench, instId);
+      if (!spot) return null;
+      placed = { benchUid: bench.uid, ...spot };
+    }
+    const loc = findBench(lab, placed.benchUid);
+    loc.bench.items.push({ uid: 'i' + lab.nextUid, inst: instId, x: placed.x, y: placed.y, rot: placed.rot });
+    lab.nextUid += 1;
+    demand -= instrumentCells(instId);
+  }
+  return lab;
+}
+
+/** 新开局布局：A301 + START_BENCHES，摆入 initCount。 */
+function startingLayout() {
+  return layoutFromCounts(Object.fromEntries(INSTRUMENTS.map((it) => [it.id, it.initCount])), { startBenches: START_BENCHES });
+}
+
+/**
+ * 存档里的 rooms 逐项校验：未知台型/仪器、越界、重叠的一律丢弃。返回 null 表示结构不可用。
+ */
+function sanitizeRooms(rawRooms) {
+  if (!Array.isArray(rawRooms) || rawRooms.length === 0) return null;
+  const rooms = [];
+  let maxUid = 0;
+  const seen = new Set();
+  const uidNum = (uid) => { const n = Number(String(uid).slice(1)); return Number.isFinite(n) ? n : 0; };
+  rawRooms.slice(0, ROOM_MAX).forEach((raw, idx) => {
+    const room = newRoom(idx);
+    const slots = raw && Array.isArray(raw.slots) ? raw.slots : [];
+    for (let s = 0; s < ROOM_SLOTS; s += 1) {
+      const b = slots[s];
+      if (!b || typeof b !== 'object' || !BENCH_MAP[b.type] || typeof b.uid !== 'string' || seen.has(b.uid)) continue;
+      seen.add(b.uid);
+      maxUid = Math.max(maxUid, uidNum(b.uid));
+      const bench = { uid: b.uid, type: b.type, items: [] };
+      for (const it of Array.isArray(b.items) ? b.items : []) {
+        if (!it || typeof it.uid !== 'string' || seen.has(it.uid) || !INSTRUMENT_MAP[it.inst]) continue;
+        const rot = Boolean(it.rot);
+        const fp = footprint(it.inst, rot);
+        const x = Number(it.x);
+        const y = Number(it.y);
+        if (!fits(bench, fp.w, fp.h, x, y)) continue;
+        seen.add(it.uid);
+        maxUid = Math.max(maxUid, uidNum(it.uid));
+        bench.items.push({ uid: it.uid, inst: it.inst, x, y, rot });
+      }
+      room.slots[s] = bench;
+    }
+    rooms.push(room);
+  });
+  return { rooms, nextUid: maxUid + 1 };
+}
 
 /* ── src/data/students.js ── */
 /**
@@ -1091,7 +1472,7 @@ const DEGREE_LABELS = { master: '硕士', phd: '博士' };
 
 /* ── src/data/projects.js ── */
 /**
- * projects.js —— 10 种项目模板 + 市场生成规则 + 承接门槛（BALANCE §5 / GDD §5）
+ * projects.js —— 13 种项目模板 + 市场生成规则 + 承接门槛（BALANCE §5 / GDD §5）
  * SPEC 硬性：市场同时有国家项目与企业项目；每个项目有规定完成时间、当前进度、难点；
  *          承接得定金、完成得尾款；越高端对仪器要求越高。
  */
@@ -1141,6 +1522,19 @@ const PROJECTS = [
     workload: 1400, limitMonths: 36, money: 1100, depositRate: 0.30, consumablePerMonth: 18.0,   // t30 §18.11：W 2000→1400、期限 48→36、耗材 24→18、合同 800→1100（IF/(W×0.85)=0.1265 ✓）
     papers: ['PE','PE','PE','PE','PE','PE','PE','PE','PE','PE','PA','PA','PA','PA','PA','PA','PB','PB','PB','PB','PC','PC','PD','PD'], require: { centrifuge: 1, shaker: 1, hood: 1, hplc: 2, elisa: 2, gc: 1, ms: 1 }, expectedIF: 150.53, q1Expect: 6.44, topExpect: 0.26,
     hint: '研究：项目千万级、负责人 ≤60 岁 [C]。三层架构：专项-项目-课题，写本子的人在第一层。' },
+  // v1.2：沿用 E2/E3/N3 同档工作量、资金与论文槽位，不改原项目难度。
+  { id: 'E5', name: '横向·紫外可见定量检测', category: 'enterprise', tier: 1,
+    workload: 170, limitMonths: 8, money: 30, depositRate: 0.40, consumablePerMonth: 2.0,
+    papers: ['PC', 'PD'], require: { centrifuge: 1, uvvis: 1 }, expectedIF: 6.16, q1Expect: 0, topExpect: 0,
+    hint: '建立标准曲线，测定样品浓度；需分光光度计完成定量检测。' },
+  { id: 'E6', name: '横向·分子检测方法开发', category: 'enterprise', tier: 2,
+    workload: 380, limitMonths: 12, money: 80, depositRate: 0.40, consumablePerMonth: 5.0,
+    papers: ['PC', 'PD', 'PD'], require: { centrifuge: 1, hood: 1, pcr: 1, gel: 1 }, expectedIF: 8.60, q1Expect: 0, topExpect: 0,
+    hint: 'PCR 扩增后用凝胶成像验证条带；两台设备齐备才能承接。' },
+  { id: 'N7', name: '国家·蛋白纯化与功能研究', category: 'nation', tier: 3,
+    workload: 760, limitMonths: 30, money: 225, depositRate: 0.30, consumablePerMonth: 8.0,
+    papers: ['PB','PB','PB','PB','PB','PB','PC','PC','PC','PD','PD','PD'], require: { centrifuge: 1, shaker: 1, hood: 1, akta: 1, uvvis: 1, elisa: 1 }, expectedIF: 50.01, q1Expect: 0.90, topExpect: 0,
+    hint: 'AKTA 分离纯化、紫外定量、酶标功能验证，串起完整蛋白研究流程。' },
 ];
 
 const PROJECT_MAP = Object.fromEntries(PROJECTS.map((p) => [p.id, p]));
@@ -1734,10 +2128,12 @@ const PROTAGONIST = { player: '马老板', son: '马小程' };
 
 
 
+
 /** 存档结构版本：改动 GameState 字段时 +1，并在 save.js 的 MIGRATIONS 里补迁移。 */
 // t24：一作归属模型改变了 player.papers 的含义（v1 = 课题组全部产出，v2 = 玩家一作），
 // 所以存档口径必须 +1；旧档由 save.js 的 MIGRATIONS[1] 按可核验台账重算。
-const STATE_VERSION = 2;
+// 1.1（LAB-SPACE §8）：lab 加 rooms/benches/items 空间结构，equipment 变为派生计数 → 2 → 3。
+const STATE_VERSION = 3;
 
 /** 子对象/数组的工厂：只在 state.js 里出现一次，供 engine 与 save 复用。 */
 function createStudent(overrides = {}) {
@@ -1895,12 +2291,12 @@ function createState(opts = {}) {
     },
 
     lab: {
-      // SPEC：开局就有几台老设备（initCount 见 src/data/instruments.js），
-      // 这批设备的加成 = START_INST_BONUS（0.45），是初始科研效率的一部分。
+      // 1.1：开局送 A301 + 2 张标准台，initCount 的老设备自动摆上（LAB-SPACE §6）。
+      // equipment 是派生计数（由摆放重算），加成仍 = START_INST_BONUS（0.45）。
+      ...startingLayout(),
       equipment: Object.fromEntries(INSTRUMENTS.map((it) => [it.id, it.initCount])),
       equipmentDown: Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0])),
       purchaseCount: Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0])),
-      holdCap: INST_HOLD_CAP,
       consumeMulThisMonth: 1,
     },
 
@@ -2454,7 +2850,7 @@ const HAPPY_ACTION_TALK = 4;
 
 /* ── src/data/events.js ── */
 /**
- * events.js —— 24 条随机事件（BALANCE §13 / GDD §10.3）
+ * events.js —— 38 条随机事件（BALANCE §13 / GDD §10.3；1.1 起每条都带 choices）
  *
  * 事件结构（docs/CONTRACT.md 冻结）：
  *   { id, title, weight, cooldown, cond, effects[], text, tone, once }
@@ -2470,149 +2866,451 @@ const hasProject = { anyProject: { active: true } };
 const hasEnterprise = { anyProject: { active: true, category: 'enterprise' } };
 const hasActive = { anyProject: { active: true } };
 
-/** @typedef {{id:string,title:string,weight:number,cooldown?:number,cond:any,effects:any[],text:string,tone:'bad'|'absurd'|'system'|'good',once?:boolean}} GameEvent */
+/** @typedef {{id:string,title:string,weight:number,cooldown?:number,cond:any,effects?:any[],choices?:{id:string,label:string,hint?:string,effects:any[]}[],text:string,tone:'bad'|'absurd'|'system'|'good',once?:boolean}} GameEvent */
 
 /** @type {GameEvent[]} */
 const EVENTS = [
+  /* ── 一、原有 24 条：choices[0] 保留 1.0 的原始效果（机器人默认选第一项，结算口径不变） ── */
   { id: 'e_reviewer2', title: '审稿人二号', weight: 10, cond: hasActive, tone: 'bad',
-    effects: [
-      { kind: 'selectProject', pick: 'randomActive' },
-      { kind: 'projectProgress', target: 'ctx', mode: 'add', value: -10 },
-      { kind: 'studentHappy', target: 'ctxStudents', value: -5 },
-    ],
-    text: '审稿人二号建议补三个实验，并顺手否定了你的人生。' },
+    text: '审稿人二号的意见写了四页：建议补三个实验，引用他本人的五篇文章，并指出「作者对本领域缺乏基本了解」。',
+    choices: [
+      { id: 'redo', label: '照单全收，补实验', hint: '项目进度倒退，干活的学生不太高兴',
+        effects: [
+          { kind: 'selectProject', pick: 'randomActive' },
+          { kind: 'projectProgress', target: 'ctx', mode: 'add', value: -10 },
+          { kind: 'studentHappy', target: 'ctxStudents', value: -5 },
+        ] },
+      { id: 'cite', label: '把他那五篇全引上', hint: '进度少退一些，诚信沾一点灰',
+        effects: [
+          { kind: 'selectProject', pick: 'randomActive' },
+          { kind: 'projectProgress', target: 'ctx', mode: 'add', value: -4 },
+          { kind: 'integrity', mode: 'add', value: -1 },
+        ] },
+    ] },
 
   { id: 'e_reagent', title: '试剂到货', weight: 10, cond: true, tone: 'good',
-    effects: [{ kind: 'consumable', mode: 'add', value: 5 }],
-    text: '厂家送来一批试用装，附赠一张名片和一句「下批要涨价了」。' },
+    text: '厂家送来一批试用装，附赠名片一张、台历一本，以及一句「下一批要涨价了」。',
+    choices: [
+      { id: 'take', label: '收下试用装', hint: '耗材资金增加',
+        effects: [{ kind: 'consumable', mode: 'add', value: 5 }] },
+      { id: 'contract', label: '顺手签下年度采购协议', hint: '耗材到得更多，经费先出一笔',
+        effects: [{ kind: 'consumable', mode: 'add', value: 8 }, { kind: 'money', mode: 'add', value: -3 }] },
+    ] },
 
   { id: 'e_machine_down', title: '仪器罢工', weight: 8, cond: { hasInstrument: 'hplc', min: 1 }, tone: 'bad',
-    effects: [{ kind: 'instrumentDown', instrument: 'hplc', months: 1 }, { kind: 'money', mode: 'add', value: -3 }],
-    text: '液相的压力曲线画出了一个心形。工程师说这是他见过最有创意的故障。' },
+    text: '液相的压力曲线画出了一个心形。原厂工程师看了二十分钟，说这是他从业以来见过最有创意的故障。',
+    choices: [
+      { id: 'repair', label: '请原厂工程师修', hint: '停机一个月，付一笔维修费',
+        effects: [{ kind: 'instrumentDown', instrument: 'hplc', months: 1 }, { kind: 'money', mode: 'add', value: -3 }] },
+      { id: 'diy', label: '让学生照着论坛帖子自己拆', hint: '省下维修费，停机更久，学生多了一门手艺和一肚子怨气',
+        effects: [{ kind: 'instrumentDown', instrument: 'hplc', months: 2 }, { kind: 'studentHappy', target: 'all', value: -3 }] },
+    ] },
 
   { id: 'e_midnight_post', title: '深夜朋友圈', weight: 8, cond: { anyStudent: { happinessBelow: 40 } }, tone: 'absurd',
-    effects: [
-      { kind: 'selectStudent', pick: 'lowestHappy' },
-      { kind: 'studentHappy', target: 'ctx', value: 5 },
-    ],
-    text: '凌晨两点，你的学生发了一条朋友圈，配图是空的实验室。你点了个赞。他三分钟后删了。' },
+    text: '凌晨两点，组里一名学生发了条朋友圈：配图是空荡荡的实验室，文案只有一个句号。三分钟后删了。',
+    choices: [
+      { id: 'like', label: '在删之前点个赞', hint: '他知道有人看见了',
+        effects: [
+          { kind: 'selectStudent', pick: 'lowestHappy' },
+          { kind: 'studentHappy', target: 'ctx', value: 5 },
+        ] },
+      { id: 'tea', label: '第二天约他喝杯奶茶', hint: '花一点精力，他的心情好转更多',
+        effects: [
+          { kind: 'selectStudent', pick: 'lowestHappy' },
+          { kind: 'energy', mode: 'add', value: -1 },
+          { kind: 'studentHappy', target: 'ctx', value: 10 },
+        ] },
+    ] },
 
   { id: 'e_meeting_derail', title: '组会跑题', weight: 6, cond: { flag: 'metThisMonth' }, tone: 'absurd',
-    effects: [{ kind: 'meetingNull', value: true }],
-    text: '组会从课题讨论一路聊到谁的导师更离谱。两小时后散会，进度零。' },
+    text: '组会从课题讨论一路聊到「谁的导师更离谱」，每个人都带了素材。两小时后散会，白板上只写着日期。',
+    choices: [
+      { id: 'drift', label: '由它去', hint: '这次组会白开',
+        effects: [{ kind: 'meetingNull', value: true }] },
+      { id: 'supper', label: '既然聊开了，加一顿夜宵', hint: '组会照样白开，花点经费，气氛好起来',
+        effects: [{ kind: 'meetingNull', value: true }, { kind: 'money', mode: 'add', value: -1 }, { kind: 'studentHappy', target: 'all', value: 4 }] },
+    ] },
 
   { id: 'e_peer_hat', title: '同龄人的帽子', weight: 8, cond: { stat: 'ageYears', op: '>=', value: 40 }, tone: 'system',
-    effects: [{ kind: 'energy', mode: 'add', value: -1 }],
-    text: '你大学室友评上了长江。你在群里发了个 nb，然后退出去看了两眼自己的结题报告。' },
+    text: '大学室友评上了长江学者，同学群里刷了两百条「恭喜」。你那条排在第一百三十七位。',
+    choices: [
+      { id: 'congrats', label: '发一句「苟富贵，勿相忘」', hint: '耗掉一点精力',
+        effects: [{ kind: 'energy', mode: 'add', value: -1 }] },
+      { id: 'lecture', label: '请他来组里做个报告', hint: '花一点经费，学生开了眼界',
+        effects: [{ kind: 'money', mode: 'add', value: -2 }, { kind: 'studentHappy', target: 'all', value: 3 }] },
+    ] },
 
   { id: 'e_inspection', title: '校领导视察', weight: 6, cond: true, tone: 'system',
-    effects: [{ kind: 'money', mode: 'add', value: 10 }, { kind: 'consumeMulNextMonth', value: 1.20 }],
-    text: '校领导来实验室视察，称赞你们「很有烟火气」。第二天给你批了一笔专项，要求「出点标志性成果」。' },
+    text: '校领导视察实验室，称赞大家「很有烟火气」。第二天批下一笔专项，附言：「尽快出点标志性成果」。',
+    choices: [
+      { id: 'accept', label: '收下专项，准备迎检', hint: '经费到账；为了迎检，下个月耗材多烧一些',
+        effects: [{ kind: 'money', mode: 'add', value: 10 }, { kind: 'consumeMulNextMonth', value: 1.20 }] },
+      { id: 'decline', label: '说经费够用，婉拒', hint: '钱没拿，口碑攒了一点',
+        effects: [{ kind: 'integrity', mode: 'add', value: 1 }] },
+    ] },
 
   { id: 'e_client_onsite', title: '甲方来人', weight: 8, cond: hasEnterprise, tone: 'absurd',
-    effects: [
-      { kind: 'selectProject', pick: 'enterprise' },
-      { kind: 'projectProgress', target: 'ctx', mode: 'add', value: 15 },
-      { kind: 'studentHappy', target: 'ctxStudents', value: -6 },
-    ],
-    text: '甲方派人驻场，坐在你学生旁边看他做实验。效率翻倍，士气腰斩。' },
+    text: '甲方派来一名工程师驻场，坐在学生旁边看他做实验，每隔十分钟问一次「快好了吗」。',
+    choices: [
+      { id: 'welcome', label: '欢迎驻场', hint: '效率翻倍，士气腰斩',
+        effects: [
+          { kind: 'selectProject', pick: 'enterprise' },
+          { kind: 'projectProgress', target: 'ctx', mode: 'add', value: 15 },
+          { kind: 'studentHappy', target: 'ctxStudents', value: -6 },
+        ] },
+      { id: 'corridor', label: '以安全规定为由请他在走廊等', hint: '进度涨得少，学生不受打扰',
+        effects: [
+          { kind: 'selectProject', pick: 'enterprise' },
+          { kind: 'projectProgress', target: 'ctx', mode: 'add', value: 5 },
+        ] },
+    ] },
 
   { id: 'e_grab_aftermath', title: '抢一作后遗症', weight: 8, cond: { stat: 'grabbedPapers', op: '>=', value: 1 }, tone: 'bad',
-    effects: [
-      { kind: 'selectStudent', pick: 'hasGrudge' },
-      { kind: 'studentHappy', target: 'ctx', value: -8 },
-      { kind: 'if', cond: { ctxStudent: { happinessBelow: 30 } }, then: [{ kind: 'studentDegree', target: 'ctx', value: -10 }] },
-    ],
-    text: '他在组会上把你的名字念了三遍，每次都停顿半秒。你假装在回邮件。' },
+    text: '组会上，他把你的名字念了三遍，每次都停顿半秒。其他人都低头看手机，屏幕是黑的。',
+    choices: [
+      { id: 'mail', label: '当场打开邮箱回邮件', hint: '他的不满会继续发酵，太低落时会拖慢毕业',
+        effects: [
+          { kind: 'selectStudent', pick: 'hasGrudge' },
+          { kind: 'studentHappy', target: 'ctx', value: -8 },
+          { kind: 'if', cond: { ctxStudent: { happinessBelow: 30 } }, then: [{ kind: 'studentDegree', target: 'ctx', value: -10 }] },
+        ] },
+      { id: 'dinner', label: '会后单独请他吃饭', hint: '花点精力，关系缓和一点，但饭桌上谁都没提那篇文章',
+        effects: [
+          { kind: 'selectStudent', pick: 'hasGrudge' },
+          { kind: 'energy', mode: 'add', value: -1 },
+          { kind: 'studentHappy', target: 'ctx', value: 4 },
+        ] },
+    ] },
 
   { id: 'e_academician_visit', title: '院士来访', weight: 5, cond: { stat: 'totalIF', op: '>=', value: 300 }, tone: 'system',
-    effects: [{ kind: 'money', mode: 'add', value: -8 }, { kind: 'ticket', value: 1 }],
-    text: '一位老院士来参观，对你们的离心机型号表示赞赏。你请了一顿饭。他记住了你的名字。' },
+    text: '一位老院士来参观，对组里那台离心机的型号表示赞赏，说他年轻时用的也是这一款。',
+    choices: [
+      { id: 'treat', label: '留他吃顿饭', hint: '花一笔招待费，他记住了你的名字',
+        effects: [{ kind: 'money', mode: 'add', value: -8 }, { kind: 'ticket', value: 1 }] },
+      { id: 'tour', label: '只参观，不留饭', hint: '一分钱没花，学生得到一张合影',
+        effects: [{ kind: 'studentHappy', target: 'all', value: 2 }] },
+    ] },
 
   { id: 'e_nsfc_letter', title: '基金委来函', weight: 8, cond: { stat: 'fakesTotal', op: '>=', value: 1 }, tone: 'bad',
-    effects: [
-      { kind: 'selectProject', pick: 'randomActive' },
-      { kind: 'projectProgress', target: 'ctx', mode: 'add', value: -10 },
-      { kind: 'integrity', mode: 'add', value: -3 },
-    ],
-    text: '基金委来函，要求补充说明三项经费支出的合理性。你翻出三年前的发票，发现是复印件。' },
+    text: '基金委来函，要求说明三项经费支出的合理性。翻出来的三年前的发票是复印件，复印件上还有咖啡渍。',
+    choices: [
+      { id: 'explain', label: '连夜写情况说明', hint: '项目停摆一阵，诚信受损',
+        effects: [
+          { kind: 'selectProject', pick: 'randomActive' },
+          { kind: 'projectProgress', target: 'ctx', mode: 'add', value: -10 },
+          { kind: 'integrity', mode: 'add', value: -3 },
+        ] },
+      { id: 'refund', label: '主动退回说不清的那部分', hint: '经费吐出去一笔，诚信损失较小',
+        effects: [{ kind: 'money', mode: 'add', value: -5 }, { kind: 'integrity', mode: 'add', value: -1 }] },
+    ] },
 
   { id: 'e_wedding', title: '学生的婚礼', weight: 6, cond: { stat: 'studentsGraduated', op: '>=', value: 1 }, tone: 'good',
-    effects: [{ kind: 'money', mode: 'add', value: -3 }, { kind: 'studentHappy', target: 'all', value: 3 }],
-    text: '你的第一届学生结婚，请你坐主桌。你随了三千块，讲了三分钟话，全场只有他自己在认真听。' },
+    text: '第一届毕业生结婚，请导师坐主桌、上台致辞。三分钟的讲话，全场只有新郎在认真听。',
+    choices: [
+      { id: 'attend', label: '随礼、上台致辞', hint: '花一点钱，在读的学生看在眼里',
+        effects: [{ kind: 'money', mode: 'add', value: -3 }, { kind: 'studentHappy', target: 'all', value: 3 }] },
+      { id: 'card', label: '寄张贺卡，说在开会', hint: '省钱，在读的学生同样看在眼里',
+        effects: [{ kind: 'studentHappy', target: 'all', value: -2 }] },
+    ] },
 
   { id: 'e_power_outage', title: '断电事故', weight: 6, cond: hasActive, tone: 'bad',
-    effects: [
-      { kind: 'selectProject', pick: 'randomActive' },
-      { kind: 'projectProgress', target: 'ctx', mode: 'add', value: -12 },
-      { kind: 'consumable', mode: 'add', value: -4 },
-    ],
-    text: '-80℃ 冰箱跳闸一夜。二十年的祖宗菌种和三十万的样品，一起归西。' },
+    text: '-80℃ 冰箱跳闸一夜。冻了二十年的祖传菌种和价值三十万的样品，一起化了。',
+    choices: [
+      { id: 'redo', label: '认栽，从头做', hint: '项目进度和耗材都有损失',
+        effects: [
+          { kind: 'selectProject', pick: 'randomActive' },
+          { kind: 'projectProgress', target: 'ctx', mode: 'add', value: -12 },
+          { kind: 'consumable', mode: 'add', value: -4 },
+        ] },
+      { id: 'claim', label: '找后勤处索赔', hint: '损失照旧；扯皮耗精力，能要回一点钱',
+        effects: [
+          { kind: 'selectProject', pick: 'randomActive' },
+          { kind: 'projectProgress', target: 'ctx', mode: 'add', value: -12 },
+          { kind: 'consumable', mode: 'add', value: -4 },
+          { kind: 'energy', mode: 'add', value: -2 },
+          { kind: 'money', mode: 'add', value: 2 },
+        ] },
+    ] },
 
   { id: 'e_exam_rise', title: '考研生逆袭', weight: 6, cond: { anyStudent: { source: 'exam' } }, tone: 'good',
-    effects: [
-      { kind: 'selectStudent', pick: 'examSource' },
-      { kind: 'studentAbility', target: 'ctx', value: 0.05 },
-      { kind: 'studentHappy', target: 'ctx', value: 10 },
-    ],
-    text: '你在数据里发现一组漂亮的重复性结果，来源是你最不看好的那个统考生。他不好意思地说：「我只是把每个条件都做了五遍。」' },
+    text: '数据里冒出一组重复性极好的结果，来源是组里最不被看好的统考生。被问起时他说：「我只是把每个条件都做了五遍。」',
+    choices: [
+      { id: 'praise', label: '组会上点名表扬', hint: '他能力见长，心情大好',
+        effects: [
+          { kind: 'selectStudent', pick: 'examSource' },
+          { kind: 'studentAbility', target: 'ctx', value: 0.05 },
+          { kind: 'studentHappy', target: 'ctx', value: 10 },
+        ] },
+      { id: 'teach', label: '让他给全组讲讲怎么做的', hint: '他能力见长，全组跟着沾光',
+        effects: [
+          { kind: 'selectStudent', pick: 'examSource' },
+          { kind: 'studentAbility', target: 'ctx', value: 0.05 },
+          { kind: 'studentHappy', target: 'ctx', value: 4 },
+          { kind: 'studentHappy', target: 'all', value: 2 },
+        ] },
+    ] },
 
   { id: 'e_editor_invite', title: '主编约稿', weight: 5, cond: { stat: 'totalIF', op: '>=', value: 180 }, tone: 'good',
-    effects: [
-      { kind: 'selectProject', pick: 'randomActive' },
-      { kind: 'projectPaperShift', target: 'ctx', value: 1 },
-    ],
-    text: '一位期刊主编在会议上认出你，说「欢迎投稿」。你知道这句话值多少钱——大概一篇一区。' },
+    text: '一位期刊主编在茶歇时认出了你，递来一张名片：「欢迎投稿」。名片背面印着版面费标准。',
+    choices: [
+      { id: 'submit', label: '当场答应投稿', hint: '一个在研项目的论文升一档',
+        effects: [
+          { kind: 'selectProject', pick: 'randomActive' },
+          { kind: 'projectPaperShift', target: 'ctx', value: 1 },
+        ] },
+      { id: 'pass', label: '收下名片，说再看看', hint: '论文不变，名片夹厚了一点',
+        effects: [{ kind: 'integrity', mode: 'add', value: 1 }] },
+    ] },
 
   { id: 'e_poach', title: '被挖角', weight: 6, cond: { anyStudent: { abilityAtLeast: 0.85, happinessBelow: 50 } }, tone: 'bad',
-    effects: [
-      { kind: 'selectStudent', pick: 'poachable' },
-      { kind: 'studentLeave', target: 'ctx', progressMul: 0.40 },
-    ],
-    text: '隔壁高校给他发了 offer，安家费比你的年投资高。他来告别时说：「老师，我不是嫌钱少。」' },
+    text: '隔壁高校给他发了 offer，安家费比课题组一年的投入还多。他来告别时说：「老师，我不是嫌钱少。」',
+    choices: [
+      { id: 'farewell', label: '祝他前程似锦', hint: '他离组，手上的项目进度被带走一大截',
+        effects: [
+          { kind: 'selectStudent', pick: 'poachable' },
+          { kind: 'studentLeave', target: 'ctx', progressMul: 0.40 },
+        ] },
+      { id: 'retain', label: '加钱挽留', hint: '经费出一大笔，他留下了，以后的工资预期也上去了',
+        effects: [
+          { kind: 'selectStudent', pick: 'poachable' },
+          { kind: 'money', mode: 'add', value: -10 },
+          { kind: 'studentHappy', target: 'ctx', value: 15 },
+          { kind: 'wageExpectShift', target: 'ctx', value: 1 },
+        ] },
+    ] },
 
   { id: 'e_health_check', title: '体检报告', weight: 6, cond: { stat: 'health', op: '<', value: 40 }, tone: 'system',
-    effects: [{ kind: 'health', mode: 'add', value: 5 }, { kind: 'energyMaxDelta', value: -2 }],
-    text: '体检报告：脂肪肝、颈椎曲度变直、窦性心律不齐。医生问你的职业，你说「老师」，他点点头，像是懂了。' },
+    text: '体检报告：脂肪肝、颈椎曲度变直、窦性心律不齐。医生问职业，听到「高校老师」后点点头，没再往下问。',
+    choices: [
+      { id: 'rest', label: '遵医嘱，少熬夜', hint: '健康回升，精力上限下降',
+        effects: [{ kind: 'health', mode: 'add', value: 5 }, { kind: 'energyMaxDelta', value: -2 }] },
+      { id: 'drawer', label: '把报告塞进抽屉', hint: '精力照旧，健康继续下滑',
+        effects: [{ kind: 'health', mode: 'add', value: -5 }] },
+    ] },
 
   { id: 'e_apc', title: '版面费', weight: 6, cond: { stat: 'recentQ4Papers', op: '>=', value: 1 }, tone: 'bad',
-    effects: [{ kind: 'money', mode: 'add', value: -6 }],
-    text: 'OA 期刊的 APC 账单到了。你盯着那个数字，想起十年前发论文还倒赚钱。' },
+    text: 'OA 期刊的版面费账单到了，金额后面跟着好几个零，备注栏写着「感谢您对开放科学的支持」。',
+    choices: [
+      { id: 'pay', label: '按时付款', hint: '经费少一笔',
+        effects: [{ kind: 'money', mode: 'add', value: -6 }] },
+      { id: 'stall', label: '拖着不付', hint: '钱暂时没出，催款邮件抄送了学校，诚信受损',
+        effects: [{ kind: 'integrity', mode: 'add', value: -3 }] },
+    ] },
 
   { id: 'e_scooped', title: '隔壁组抢发', weight: 5, cond: hasActive, tone: 'bad',
-    effects: [
-      { kind: 'selectProject', pick: 'randomActive' },
-      { kind: 'projectPaperShift', target: 'ctx', value: -1 },
-    ],
-    text: '隔壁组发了同一体系。你的学生问：「老师，我们还做吗？」你说：「做，我们做深一点。」——然后降了一档。' },
+    text: '隔壁组抢先发表了同一个体系。学生问：「老师，我们还做吗？」',
+    choices: [
+      { id: 'deeper', label: '「做，我们做深一点。」', hint: '一个在研项目的论文降一档',
+        effects: [
+          { kind: 'selectProject', pick: 'randomActive' },
+          { kind: 'projectPaperShift', target: 'ctx', value: -1 },
+        ] },
+      { id: 'pivot', label: '连夜换方向', hint: '论文档位保住，进度大幅倒退',
+        effects: [
+          { kind: 'selectProject', pick: 'randomActive' },
+          { kind: 'projectProgress', target: 'ctx', mode: 'add', value: -15 },
+        ] },
+    ] },
 
   { id: 'e_love', title: '学生恋爱了', weight: 6, cond: { anyStudent: { happinessAtLeast: 50 } }, tone: 'absurd',
-    effects: [
-      { kind: 'selectStudent', pick: 'randomHappyHigh' },
-      { kind: 'studentHappy', target: 'ctx', value: 15 },
-      { kind: 'studentDegree', target: 'ctx', value: -8 },
-    ],
-    text: '他恋爱了。一个月没做实验，但数据记录本上的字变得非常工整。' },
+    text: '组里有人恋爱了。一个月没怎么进实验室，但数据记录本上的字变得非常工整。',
+    choices: [
+      { id: 'bless', label: '随他去', hint: '他很开心，毕业进度慢了',
+        effects: [
+          { kind: 'selectStudent', pick: 'randomHappyHigh' },
+          { kind: 'studentHappy', target: 'ctx', value: 15 },
+          { kind: 'studentDegree', target: 'ctx', value: -8 },
+        ] },
+      { id: 'remind', label: '提醒他还有毕业论文', hint: '开心少一点，进度也少掉一点',
+        effects: [
+          { kind: 'selectStudent', pick: 'randomHappyHigh' },
+          { kind: 'studentHappy', target: 'ctx', value: 5 },
+          { kind: 'studentDegree', target: 'ctx', value: -3 },
+        ] },
+    ] },
 
   { id: 'e_breakup', title: '学生失恋了', weight: 6, cond: { anyStudent: { happinessBelow: 60 } }, tone: 'absurd',
-    effects: [
-      { kind: 'selectStudent', pick: 'randomHappyLow' },
-      { kind: 'studentHappy', target: 'ctx', value: -15 },
-      { kind: 'studentOutputMul', target: 'ctx', value: 0.50, months: 1 },
-    ],
-    text: '他失恋了。在实验室循环同一首歌听了六个小时，配平了三篇文献综述。' },
+    text: '有人失恋了，在实验室单曲循环同一首歌六个小时，顺手写完了三篇文献综述。',
+    choices: [
+      { id: 'leave', label: '让他静一静', hint: '他很低落，这个月产出减半',
+        effects: [
+          { kind: 'selectStudent', pick: 'randomHappyLow' },
+          { kind: 'studentHappy', target: 'ctx', value: -15 },
+          { kind: 'studentOutputMul', target: 'ctx', value: 0.50, months: 1 },
+        ] },
+      { id: 'holiday', label: '放他一周假', hint: '这个月他几乎不干活，心情恢复得快',
+        effects: [
+          { kind: 'selectStudent', pick: 'randomHappyLow' },
+          { kind: 'studentHappy', target: 'ctx', value: -5 },
+          { kind: 'studentOutputMul', target: 'ctx', value: 0.20, months: 1 },
+        ] },
+    ] },
 
   { id: 'e_stipend_raise', title: '学校上调补助标准', weight: 4, cond: { stat: 'rankIndex', op: '>=', value: 3 }, tone: 'system',
-    effects: [{ kind: 'wageExpectShift', target: 'all', value: 1 }, { kind: 'studentHappy', target: 'all', value: -3 }],
-    text: '学校上调了研究生补助标准。你的学生们看你的眼神变得很有内容。' },
+    text: '学校上调了研究生补助标准，通知在学生群里被转发了十一次，每次都有人@课题组负责人。',
+    choices: [
+      { id: 'hold', label: '按兵不动', hint: '学生的工资预期上涨，心里不痛快',
+        effects: [{ kind: 'wageExpectShift', target: 'all', value: 1 }, { kind: 'studentHappy', target: 'all', value: -3 }] },
+      { id: 'raise', label: '主动给大家补一点', hint: '经费出一笔，工资预期照涨，但没人摆脸色',
+        effects: [{ kind: 'wageExpectShift', target: 'all', value: 1 }, { kind: 'money', mode: 'add', value: -3 }, { kind: 'studentHappy', target: 'all', value: 3 }] },
+    ] },
 
   { id: 'e_flood', title: '实验室水漫金山', weight: 4, cond: { hasInstrument: 'hood', min: 1 }, tone: 'bad',
-    effects: [{ kind: 'consumable', mode: 'add', value: -8 }, { kind: 'instrumentDown', instrument: 'hood', months: 1 }],
-    text: '半夜管道爆了，水从三楼流到一楼，路过的人都以为你们在做湿实验。' },
+    text: '半夜水管爆裂，水从三楼流到一楼。路过的人以为这个组改做湿实验了。',
+    choices: [
+      { id: 'mop', label: '全组拖地', hint: '耗材泡了一批，超净台停一个月',
+        effects: [{ kind: 'consumable', mode: 'add', value: -8 }, { kind: 'instrumentDown', instrument: 'hood', months: 1 }] },
+      { id: 'insurance', label: '拍照取证，找后勤和保险', hint: '损失照旧；跑流程耗精力，能报回一点',
+        effects: [{ kind: 'consumable', mode: 'add', value: -8 }, { kind: 'instrumentDown', instrument: 'hood', months: 1 }, { kind: 'energy', mode: 'add', value: -1 }, { kind: 'money', mode: 'add', value: 2 }] },
+    ] },
 
   { id: 'e_reunion', title: '老同学聚会', weight: 6, cond: true, tone: 'system',
-    effects: [{ kind: 'energy', mode: 'add', value: -1 }, { kind: 'health', mode: 'add', value: -3 }],
-    text: '老同学都当上处长了。你喝多了，说了三遍「我这课题要做真东西」。第二天他们都忘了，你没忘。' },
+    text: '同学聚会，一桌坐了一半处长。席间有人说了三遍「我这课题是要做真东西的」，第二天群里没人提起。',
+    choices: [
+      { id: 'stay', label: '陪到最后一轮', hint: '精力和健康都有损耗',
+        effects: [{ kind: 'energy', mode: 'add', value: -1 }, { kind: 'health', mode: 'add', value: -3 }] },
+      { id: 'early', label: '借口盯实验，先走一步', hint: '少喝几杯，但还是耗掉一晚上',
+        effects: [{ kind: 'energy', mode: 'add', value: -1 }] },
+    ] },
+
+  /* ── 二、1.1 新增 14 条：全部只用既有效果 DSL；choices[0] 为温和默认项 ── */
+  { id: 'e_form_season', title: '表格季', weight: 7, cond: true, tone: 'system',
+    text: '科研处下发通知：年度业绩表由十二页增至十九页，新增栏目为「填表减负工作成效」。',
+    choices: [
+      { id: 'self', label: '亲自填', hint: '耗掉不少精力',
+        effects: [{ kind: 'energy', mode: 'add', value: -2 }] },
+      { id: 'delegate', label: '交给学生代填', hint: '精力省下了，学生多了一份不算学分的工作',
+        effects: [{ kind: 'studentHappy', target: 'all', value: -4 }] },
+    ] },
+
+  { id: 'e_reimburse', title: '报销', weight: 7, cond: true, tone: 'system',
+    text: '一张两百块的发票报了三周，财务退回的理由是：抬头少了「有限」两个字。',
+    choices: [
+      { id: 'reissue', label: '重新开票，再跑一趟', hint: '耗一点精力',
+        effects: [{ kind: 'energy', mode: 'add', value: -1 }] },
+      { id: 'forget', label: '这笔钱不要了', hint: '经费少一点，时间省下来',
+        effects: [{ kind: 'money', mode: 'add', value: -1 }] },
+    ] },
+
+  { id: 'e_conference', title: '学术年会', weight: 5, cond: { stat: 'totalIF', op: '>=', value: 50 }, tone: 'good',
+    text: '受邀参加学术年会。十五分钟的报告，被前一位大佬超时压缩到了六分钟，茶歇时还是有三个人来加了微信。',
+    choices: [
+      { id: 'solo', label: '自己去，当天往返', hint: '耗精力',
+        effects: [{ kind: 'energy', mode: 'add', value: -2 }] },
+      { id: 'bring', label: '带两名学生一起去', hint: '花一笔差旅，学生开心',
+        effects: [{ kind: 'money', mode: 'add', value: -3 }, { kind: 'studentHappy', target: 'all', value: 5 }] },
+    ] },
+
+  { id: 'e_ranking', title: '学科排行榜', weight: 5, cond: true, tone: 'system',
+    text: '某机构发布年度学科排行榜，学院上升三位。院长办公室当天订了横幅，第二天下发「冲一流」专项申报通知。',
+    choices: [
+      { id: 'repost', label: '转发朋友圈，配个大拇指', hint: '学生跟着与有荣焉',
+        effects: [{ kind: 'studentHappy', target: 'all', value: 1 }] },
+      { id: 'apply', label: '连夜申报专项', hint: '熬掉精力，换一笔经费',
+        effects: [{ kind: 'energy', mode: 'add', value: -2 }, { kind: 'money', mode: 'add', value: 5 }] },
+    ] },
+
+  { id: 'e_ai_review', title: 'AI 写的综述', weight: 6, cond: { all: [{ anyStudent: { active: true } }, hasProject] }, tone: 'absurd',
+    text: '学生交来一份 AI 写的综述初稿。参考文献里有两篇不存在的论文，通讯作者都是你。',
+    choices: [
+      { id: 'rewrite', label: '退回去重写', hint: '他不太高兴，毕业进度慢一点',
+        effects: [
+          { kind: 'selectStudent', pick: 'random' },
+          { kind: 'studentHappy', target: 'ctx', value: -4 },
+          { kind: 'studentDegree', target: 'ctx', value: -2 },
+        ] },
+      { id: 'patch', label: '删掉那两篇，其余照用', hint: '项目往前走，诚信沾一点灰',
+        effects: [
+          { kind: 'selectProject', pick: 'randomActive' },
+          { kind: 'projectProgress', target: 'ctx', mode: 'add', value: 6 },
+          { kind: 'integrity', mode: 'add', value: -2 },
+        ] },
+    ] },
+
+  { id: 'e_hood_queue', title: '超净台排队', weight: 5, cond: { all: [{ hasInstrument: 'hood', min: 1 }, { stat: 'studentCount', op: '>=', value: 3 }] }, tone: 'absurd',
+    text: '超净台预约表排到了凌晨四点。表格底下贴着一张便条：「轮到的同学请不要睡着」。',
+    choices: [
+      { id: 'allow', label: '默许通宵', hint: '学生熬着，怨气上来',
+        effects: [{ kind: 'studentHappy', target: 'all', value: -4 }] },
+      { id: 'schedule', label: '亲自排一张值班表', hint: '花点精力，大家睡得着了',
+        effects: [{ kind: 'energy', mode: 'add', value: -1 }, { kind: 'studentHappy', target: 'all', value: 2 }] },
+    ] },
+
+  { id: 'e_safety_check', title: '安全检查', weight: 6, cond: true, tone: 'system',
+    text: '学校安全检查组到访。扣分项：试剂柜标签字体不统一、垃圾桶离水池太近、墙上的「安全第一」贴歪了。',
+    choices: [
+      { id: 'fix', label: '连夜整改', hint: '耗精力，扔掉一批过期耗材',
+        effects: [{ kind: 'energy', mode: 'add', value: -1 }, { kind: 'consumable', mode: 'add', value: -2 }] },
+      { id: 'argue', label: '据理力争', hint: '道理讲赢了，罚款照交',
+        effects: [{ kind: 'money', mode: 'add', value: -2 }] },
+    ] },
+
+  { id: 'e_hotpot', title: '实验室火锅', weight: 5, cond: { stat: 'studentCount', op: '>=', value: 2 }, tone: 'absurd',
+    text: '有人在实验室偷偷煮火锅，烟雾报警器响了。消防通道里站满了隔壁组的人，有两个拿着碗。',
+    choices: [
+      { id: 'scold', label: '全组通报批评', hint: '学生不高兴，安全记录干净了',
+        effects: [{ kind: 'studentHappy', target: 'all', value: -3 }, { kind: 'integrity', mode: 'add', value: 1 }] },
+      { id: 'join', label: '先尝一口再说', hint: '全组很开心，安全处记了一笔',
+        effects: [{ kind: 'studentHappy', target: 'all', value: 5 }, { kind: 'integrity', mode: 'add', value: -1 }] },
+    ] },
+
+  { id: 'e_talent_program', title: '人才计划申报', weight: 5, cond: { stat: 'rankIndex', op: '>=', value: 1 }, tone: 'system',
+    text: '学院动员申报青年人才计划。材料要求「突出代表性成果」，模板里的代表作一栏留了十行。',
+    choices: [
+      { id: 'apply', label: '熬夜写申报书', hint: '伤身体，学院配套一笔申报经费',
+        effects: [{ kind: 'energy', mode: 'add', value: -2 }, { kind: 'health', mode: 'add', value: -3 }, { kind: 'money', mode: 'add', value: 4 }] },
+      { id: 'skip', label: '今年先不报', hint: '多睡几个好觉',
+        effects: [{ kind: 'health', mode: 'add', value: 2 }] },
+    ] },
+
+  { id: 'e_vendor_dinner', title: '代理商饭局', weight: 5, cond: true, tone: 'system',
+    text: '仪器代理商请吃饭。饭后递上一份「年度战略合作方案」，第三页用小一号字写着返点比例。',
+    choices: [
+      { id: 'eat', label: '只吃饭，不签字', hint: '酒喝了，方案没签',
+        effects: [{ kind: 'health', mode: 'add', value: -1 }] },
+      { id: 'sign', label: '签了方案', hint: '经费多一笔，诚信少一截',
+        effects: [{ kind: 'money', mode: 'add', value: 4 }, { kind: 'integrity', mode: 'add', value: -4 }] },
+    ] },
+
+  { id: 'e_mentor_survey', title: '导师评价问卷', weight: 5, cond: { stat: 'studentCount', op: '>=', value: 1 }, tone: 'system',
+    text: '研究生院开展导师评价问卷。问卷是匿名的，登录需要学号。',
+    choices: [
+      { id: 'silent', label: '什么也不说', hint: '学生如实填写，口碑攒了一点',
+        effects: [{ kind: 'integrity', mode: 'add', value: 1 }] },
+      { id: 'remind', label: '组会上「提醒」大家认真填', hint: '分数好看了，学生心里有数',
+        effects: [{ kind: 'studentHappy', target: 'all', value: -4 }, { kind: 'integrity', mode: 'add', value: -1 }] },
+    ] },
+
+  { id: 'e_paper_mill', title: '论文中介', weight: 6, cond: true, tone: 'absurd',
+    text: '邮箱收到一封邮件：「SCI 一区包录用，可开发票，支持分期」。落款是某某科技文化传媒有限公司。',
+    choices: [
+      { id: 'report', label: '转发给科研处', hint: '花一点精力，口碑攒了一点',
+        effects: [{ kind: 'energy', mode: 'add', value: -1 }, { kind: 'integrity', mode: 'add', value: 1 }] },
+      { id: 'ask', label: '回复问个价', hint: '没买，但聊天记录还在',
+        effects: [{ kind: 'integrity', mode: 'add', value: -1 }] },
+    ] },
+
+  { id: 'e_cat', title: '实验室来了只猫', weight: 5, cond: true, tone: 'good',
+    text: '一只橘猫从窗户钻进实验室，在恒温摇床上睡了一下午。第二天它带来了另一只。',
+    choices: [
+      { id: 'adopt', label: '收养，列入组员名单', hint: '全组开心，猫粮从耗材里出',
+        effects: [{ kind: 'studentHappy', target: 'all', value: 6 }, { kind: 'consumable', mode: 'add', value: -2 }] },
+      { id: 'evict', label: '请出去，关好窗', hint: '实验室干净了，学生有点失落',
+        effects: [{ kind: 'studentHappy', target: 'all', value: -2 }] },
+    ] },
+
+  { id: 'e_deadline_extend', title: '截止日期延后', weight: 5, cond: hasProject, tone: 'absurd',
+    text: '项目节点延后一周的通知，在原截止日期当晚十一点五十分发出。此时材料已经提交了。',
+    choices: [
+      { id: 'polish', label: '撤回来再打磨一周', hint: '花精力，项目往前走一点',
+        effects: [
+          { kind: 'selectProject', pick: 'randomActive' },
+          { kind: 'projectProgress', target: 'ctx', mode: 'add', value: 5 },
+          { kind: 'energy', mode: 'add', value: -1 },
+        ] },
+      { id: 'sleep', label: '交了就交了，睡觉', hint: '健康回升一点',
+        effects: [{ kind: 'health', mode: 'add', value: 2 }] },
+    ] },
 ];
 
 const EVENT_MAP = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
@@ -2712,11 +3410,11 @@ function isDown(lab, id) {
   return (lab.equipmentDown && lab.equipmentDown[id] > 0) || false;
 }
 
-/** 单台价（第 n 台 = 基础价 × 1.6^(n-1)，n = 已持有数量）。 */
+/** 单台价：1.1 起固定价（LAB-SPACE §5，INST_PRICE_GROWTH = 1）；ownedCount 仅为兼容旧调用。 */
 function instrumentPrice(id, ownedCount) {
   const def = instrumentDef(id);
   if (!def) return Infinity;
-  return round(def.price * Math.pow(INST_PRICE_GROWTH, Math.max(0, ownedCount)), 2);
+  return round(def.price * Math.pow(INST_PRICE_GROWTH, Math.max(0, Number(ownedCount) || 0)), 2);
 }
 
 /** 全实验室仪器加成（停机仪器按 TEMP_BROKEN_BONUS_MUL 折算），上限 INST_BONUS_CAP。 */
@@ -3293,6 +3991,8 @@ function isLabEmpty(state) {
 
 
 
+
+
 /* ════════════════════════════ action 定义 ════════════════════════════ */
 
 /**
@@ -3307,7 +4007,13 @@ const ACTIONS = {
   buyConsumable: (payload = {}) => ({ type: 'game/buyConsumable', payload }),
   setWage: (payload) => ({ type: 'game/setWage', payload }),
   hireStudent: (payload) => ({ type: 'game/hireStudent', payload }),
-  buyEquipment: (payload) => ({ type: 'game/buyEquipment', payload }),
+  buyEquipment: (payload) => ({ type: 'game/buyEquipment', payload }),   // 1.1：= lab/buyInstrument（无坐标→自动找位）
+  buyRoom: (payload = {}) => ({ type: 'lab/buyRoom', payload }),
+  buyBench: (payload) => ({ type: 'lab/buyBench', payload }),
+  sellBench: (payload) => ({ type: 'lab/sellBench', payload }),
+  buyInstrument: (payload) => ({ type: 'lab/buyInstrument', payload }),
+  moveItem: (payload) => ({ type: 'lab/moveItem', payload }),
+  sellItem: (payload) => ({ type: 'lab/sellItem', payload }),
   acceptProject: (payload) => ({ type: 'game/acceptProject', payload }),
   lockOffer: (payload) => ({ type: 'game/lockOffer', payload }),
   assignStudent: (payload) => ({ type: 'game/assignStudent', payload }),
@@ -3361,7 +4067,13 @@ function reduce(state, action) {
     case 'game/buyConsumable': return reduceBuyConsumable(state, action.payload || {});
     case 'game/setWage': return reduceSetWage(state, action.payload || {});
     case 'game/hireStudent': return reduceHireStudent(state, action.payload || {});
-    case 'game/buyEquipment': return reduceBuyEquipment(state, action.payload || {});
+    case 'game/buyEquipment':
+    case 'lab/buyInstrument': return reduceBuyInstrument(state, action.payload || {});
+    case 'lab/buyRoom': return reduceBuyRoom(state);
+    case 'lab/buyBench': return reduceBuyBench(state, action.payload || {});
+    case 'lab/sellBench': return reduceSellBench(state, action.payload || {});
+    case 'lab/moveItem': return reduceMoveItem(state, action.payload || {});
+    case 'lab/sellItem': return reduceSellItem(state, action.payload || {});
     case 'game/acceptProject': return reduceAcceptProject(state, action.payload || {});
     case 'game/lockOffer': return reduceLockOffer(state, action.payload || {});
     case 'game/assignStudent': return reduceAssign(state, action.payload || {}, true);
@@ -3972,7 +4684,10 @@ function refreshMarket(state, rng, log) {
   const ttlOf = (o) => (o.kind === 'student'
     ? (o.expiresMonthIndex || ((o.createdMonthIndex || 0) + STUDENT_OFFER_TTL_MONTHS))
     : (o.expiresMonthIndex || 0));
-  const alive = (o) => Boolean(o.locked) || ttlOf(o) === 0 || now <= ttlOf(o);
+  // 项目有效区间为 [created, expires)：TTL=3 不能在第 3 月继续占位，形成四个月周期。
+  // 学生沿用原到期口径；锁定项目仍不自动撤走。
+  const alive = (o) => Boolean(o.locked) || ttlOf(o) === 0
+    || (o.kind === 'project' ? now < ttlOf(o) : now <= ttlOf(o));
   let pool = state.market.pool.filter(alive);
   state.market.pool = pool;   // 让 createProjectOffer 里的 taken 判定看到最新池子
 
@@ -4321,28 +5036,155 @@ function reduceHireStudent(state, payload) {
   return next;
 }
 
-function reduceBuyEquipment(state, payload) {
+/* ── 1.1 实验室空间（LAB-SPACE §8）：买实验室 / 买放实验台 / 摆放·移动·出售仪器 ── */
+
+/** 明确坐标时校验；没给坐标时自动取第一个能放的位置。返回 {benchUid,x,y,rot} 或 {error}。 */
+function resolvePlacement(lab, instId, payload, ignoreUid) {
+  const hasXY = payload.benchUid !== undefined && payload.x !== undefined && payload.y !== undefined;
+  if (!hasXY) {
+    if (ignoreUid) return { error: LAB_TEXT.badSpot };
+    return findSpot(lab, instId) || { error: LAB_TEXT.full };
+  }
+  const loc = findBench(lab, payload.benchUid);
+  if (!loc) return { error: LAB_TEXT.badSpot };
+  const rot = Boolean(payload.rot);
+  const fp = footprint(instId, rot);
+  const x = Number(payload.x);
+  const y = Number(payload.y);
+  if (!fits(loc.bench, fp.w, fp.h, x, y, ignoreUid)) return { error: LAB_TEXT.badSpot };
+  return { benchUid: loc.bench.uid, x, y, rot };
+}
+
+function reduceBuyInstrument(state, payload) {
   const def = INSTRUMENT_MAP[payload.id];
   if (!def) return state;
-  const owned = state.lab.equipment[def.id] || 0;
   const next = cloneState(state);
-  if (owned >= INST_HOLD_CAP) {
-    next.ui.toast = def.name + '已经买满了（上限 ' + INST_HOLD_CAP + ' 台）。';
-    return next;
-  }
   if (state.player.rankIndex < def.tierGate) {
     next.ui.toast = '这个等级的仪器要头衔 ' + def.tierGate + ' 才能申购。';
     return next;
   }
-  const price = instrumentPrice(def.id, owned);
+  const price = instrumentPrice(def.id);
   if (next.player.money < price) {
     next.ui.toast = '经费不足，' + def.name + ' 报价 ' + price + ' 万。';
     return next;
   }
+  const spot = resolvePlacement(next.lab, def.id, payload, null);
+  if (spot.error) {
+    next.ui.toast = spot.error;
+    return next;
+  }
+  const loc = findBench(next.lab, spot.benchUid);
+  loc.bench.items.push({ uid: 'i' + next.lab.nextUid, inst: def.id, x: spot.x, y: spot.y, rot: spot.rot });
+  next.lab.nextUid += 1;
   next.player.money = round(next.player.money - price, 2);
-  next.lab.equipment[def.id] = owned + 1;
   next.lab.purchaseCount[def.id] = (next.lab.purchaseCount[def.id] || 0) + 1;
-  pushChronicle(next, { kind: 'lab', tone: 'good', text: '购入 ' + def.name + ' 一台（' + price + ' 万）。' });
+  recountEquipment(next.lab);
+  pushChronicle(next, { kind: 'lab', tone: 'good', text: loc.room.id + ' 新到一台' + def.name + '（' + price + ' 万）。' + (def.flavor || '') });
+  return next;
+}
+
+function reduceBuyRoom(state) {
+  const next = cloneState(state);
+  const idx = next.lab.rooms.length;
+  const def = ROOMS[idx];
+  if (idx >= ROOM_MAX || !def) {
+    next.ui.toast = LAB_TEXT.roomsMaxed;
+    return next;
+  }
+  if (next.player.rankIndex < def.rankGate) {
+    next.ui.toast = def.name + ' 要头衔 ' + def.rankGate + ' 才批得下来。';
+    return next;
+  }
+  if (next.player.money < def.price) {
+    next.ui.toast = '经费不足，' + def.name + ' 要 ' + def.price + ' 万。';
+    return next;
+  }
+  next.player.money = round(next.player.money - def.price, 2);
+  next.lab.rooms.push(newRoom(idx));
+  pushChronicle(next, { kind: 'lab', tone: 'good', text: '申请到新实验室 ' + def.name + '（' + def.price + ' 万）。' + def.flavor });
+  return next;
+}
+
+function reduceBuyBench(state, payload) {
+  const type = BENCH_MAP[payload.type] ? payload.type : 'bench_std';
+  const def = BENCH_MAP[type];
+  const next = cloneState(state);
+  let target;
+  if (payload.roomIdx !== undefined && payload.slot !== undefined) {
+    const roomIdx = Number(payload.roomIdx);
+    const room = next.lab.rooms[roomIdx];
+    const slot = Number(payload.slot);
+    if (!room || !Number.isInteger(slot) || slot < 0 || slot >= room.slots.length || room.slots[slot]) {
+      next.ui.toast = '这个台位不能放实验台（不存在或已占用）。';
+      return next;
+    }
+    target = { roomIdx, slot };
+  } else {
+    target = findEmptySlot(next.lab);
+    if (!target) {
+      next.ui.toast = LAB_TEXT.noSlot;
+      return next;
+    }
+  }
+  if (next.player.rankIndex < def.rankGate) {
+    next.ui.toast = def.name + '要头衔 ' + def.rankGate + ' 才能申购。';
+    return next;
+  }
+  if (next.player.money < def.price) {
+    next.ui.toast = '经费不足，' + def.name + ' 要 ' + def.price + ' 万。';
+    return next;
+  }
+  next.player.money = round(next.player.money - def.price, 2);
+  const bench = { uid: 'b' + next.lab.nextUid, type, items: [] };
+  next.lab.nextUid += 1;
+  next.lab.rooms[target.roomIdx].slots[target.slot] = bench;
+  pushChronicle(next, { kind: 'lab', tone: 'system', text: next.lab.rooms[target.roomIdx].id + ' 搬进一张' + def.name + '（' + def.price + ' 万）。' });
+  return next;
+}
+
+function reduceSellBench(state, payload) {
+  const loc = findBench(state.lab, payload.benchUid);
+  if (!loc) return state;
+  const next = cloneState(state);
+  if (loc.bench.items.length > 0) {
+    next.ui.toast = LAB_TEXT.benchNotEmpty;
+    return next;
+  }
+  const def = BENCH_MAP[loc.bench.type];
+  const refund = round(def.price * SELL_REFUND_RATE, 2);
+  next.lab.rooms[loc.roomIdx].slots[loc.slot] = null;
+  next.player.money = round(next.player.money + refund, 2);
+  pushChronicle(next, { kind: 'lab', tone: 'system', text: '拆掉一张' + def.name + '，回收 ' + refund + ' 万。' });
+  return next;
+}
+
+function reduceMoveItem(state, payload) {
+  const found = findItem(state.lab, payload.itemUid);
+  if (!found) return state;
+  const next = cloneState(state);
+  const spot = resolvePlacement(next.lab, found.item.inst, payload, found.item.uid);
+  if (spot.error) {
+    next.ui.toast = spot.error;
+    return next;
+  }
+  const from = findItem(next.lab, payload.itemUid);
+  from.bench.items = from.bench.items.filter((it) => it.uid !== from.item.uid);
+  const to = findBench(next.lab, spot.benchUid);
+  to.bench.items.push({ uid: from.item.uid, inst: from.item.inst, x: spot.x, y: spot.y, rot: spot.rot });
+  recountEquipment(next.lab);
+  return next;
+}
+
+function reduceSellItem(state, payload) {
+  if (!findItem(state.lab, payload.itemUid)) return state;
+  const next = cloneState(state);
+  const loc = findItem(next.lab, payload.itemUid);
+  const def = INSTRUMENT_MAP[loc.item.inst];
+  const refund = round(instrumentPrice(def.id) * SELL_REFUND_RATE, 2);
+  loc.bench.items = loc.bench.items.filter((it) => it.uid !== loc.item.uid);
+  next.player.money = round(next.player.money + refund, 2);
+  recountEquipment(next.lab);
+  pushChronicle(next, { kind: 'lab', tone: 'system', text: '把一台' + def.name + '转给了兄弟课题组，回收 ' + refund + ' 万。' });
   return next;
 }
 
@@ -5171,6 +6013,9 @@ function createGame(opts = {}) {
 
 
 
+
+
+
 /** @typedef {{version:number, savedAt:number, state:any}} SaveEnvelope */
 
 const SAVE_VERSION = STATE_VERSION;
@@ -5204,6 +6049,21 @@ const MIGRATIONS = {
     next.player.papers = counts;
     return next;
   },
+  /**
+   * v2 → v3（1.1 实验室空间，LAB-SPACE §9）：把 1.0 的按种类计数用 First-Fit Decreasing
+   * 自动摆进 A301（先放开局同款 2 张标准台），不够就**免费**补台/开房间——老玩家资产不缩水。
+   * 摆放后重算 equipment 必须与迁移前逐项相等，否则返回 null（走「读档失败」路径）。
+   */
+  2: (state) => {
+    const lab = (state && state.lab) || {};
+    const before = {};
+    for (const id of INSTRUMENT_IDS) before[id] = Math.max(0, Math.floor(Number(lab.equipment && lab.equipment[id]) || 0));
+    const layout = layoutFromCounts(before, { startBenches: START_BENCHES });
+    if (!layout) return null;
+    const after = countEquipment(layout);
+    for (const id of INSTRUMENT_IDS) if (after[id] !== before[id]) return null;
+    return { ...state, lab: { ...lab, rooms: layout.rooms, nextUid: layout.nextUid, equipment: after } };
+  },
 };
 
 /** 包装成存档信封。 */
@@ -5230,6 +6090,7 @@ function hydrate(raw) {
       const step = MIGRATIONS[version];
       if (typeof step !== 'function') return null;
       migrated = step(migrated);
+      if (!migrated) return null;
       version += 1;
     }
     if (version > STATE_VERSION) return null;
@@ -5298,14 +6159,23 @@ function validateState(rawState) {
 
   // 实验室
   const lab = rawState.lab || {};
-  for (const [id, count] of Object.entries(lab.equipment || {})) {
-    if (base.lab.equipment[id] !== undefined) base.lab.equipment[id] = Math.round(num(count, 0, 0, 3));
+  // 1.1：空间结构逐项校验（越界/重叠/未知类型丢弃）；equipment 一律由摆放重算，不信任存档里的计数。
+  const rooms = sanitizeRooms(lab.rooms);
+  if (rooms) {
+    base.lab.rooms = rooms.rooms;
+    base.lab.nextUid = Math.max(rooms.nextUid, Math.round(num(lab.nextUid, 1, 1, 1e6)));
+  } else if (lab.equipment && typeof lab.equipment === 'object') {
+    const layout = layoutFromCounts(lab.equipment, { startBenches: START_BENCHES });
+    if (layout) { base.lab.rooms = layout.rooms; base.lab.nextUid = layout.nextUid; }
   }
+  base.lab.equipment = countEquipment(base.lab);
+  // t3（t4 暴露的 1.0 潜伏 bug）：下月耗材倍率是事件写进 lab 的，读档不恢复就会丢掉事件效果。
+  base.lab.consumeMulThisMonth = round(num(lab.consumeMulThisMonth, CONSUME_MUL_DEFAULT, CONSUME_MUL_SAVE_MIN, CONSUME_MUL_SAVE_MAX), 3);
   for (const [id, months] of Object.entries(lab.equipmentDown || {})) {
     if (base.lab.equipmentDown[id] !== undefined) base.lab.equipmentDown[id] = Math.round(num(months, 0, 0, 36));
   }
   for (const [id, count] of Object.entries(lab.purchaseCount || {})) {
-    if (base.lab.purchaseCount[id] !== undefined) base.lab.purchaseCount[id] = Math.round(num(count, 0, 0, 3));
+    if (base.lab.purchaseCount[id] !== undefined) base.lab.purchaseCount[id] = Math.round(num(count, 0, 0, 999));
   }
 
   // 学生 / 项目 / 市场
@@ -5569,6 +6439,8 @@ function clearSave(storage) {
 
 
 
+
+
 // core 内部的常量复用（engine 不 import selectors，因此无循环依赖）
 
 
@@ -5758,7 +6630,11 @@ function selectProjectRow(state, project) {
       const st = state.students.find((s) => s.id === id);
       return st ? { id: st.id, name: st.name } : { id, name: '（已离组）' };
     }),
-    papers: (project.paperTiers || []).map((p) => p),
+    // 一作归属的机器可读标记（t24 规则）：亲带项目的论文 firstAuthorId === PLAYER_AUTHOR_ID。
+    // UI 必须据 byPlayer 渲染，不得只看 grabbed —— 否则会把老板亲带的论文误标成「一作还在学生名下」。
+    papers: (project.paperTiers || []).map((p) => (p && typeof p === 'object'
+      ? { ...p, byPlayer: p.firstAuthorId === PLAYER_AUTHOR_ID }
+      : p)),
     status: project.status,
   };
 }
@@ -5771,11 +6647,13 @@ function selectEquipment(state) {
   return INSTRUMENTS.map((def) => {
     const owned = state.lab.equipment[def.id] || 0;
     const down = (state.lab.equipmentDown[def.id] || 0) > 0;
-    const price = instrumentPrice(def.id, owned);
+    const price = instrumentPrice(def.id);
     const reasons = [];
-    if (owned >= INST_HOLD_CAP) reasons.push('已买满');
     if (state.player.rankIndex < def.tierGate) reasons.push('需头衔 ' + def.tierGate);
     if (state.player.money < price) reasons.push('经费不足');
+    // 1.1：没有持有上限，唯一约束是空间（LAB-SPACE §2）
+    const spot = findSpot(state.lab, def.id);
+    if (!spot) reasons.push('空间不足');
     return {
       id: def.id,
       name: def.name,
@@ -5783,7 +6661,13 @@ function selectEquipment(state) {
       tierLabel: def.tierLabel,
       bonusPct: Math.round(def.bonus * 100),
       owned,
-      holdCap: INST_HOLD_CAP,
+      holdCap: '∞',                       // 1.1：取消持有上限（展示用）
+      w: def.w,
+      h: def.h,
+      cells: def.w * def.h,
+      flavor: def.flavor || '',
+      autoSpot: spot,                     // 自动摆放会落在哪（无坐标购买时）
+      sellRefund: Math.round(price * SELL_REFUND_RATE * 100) / 100,
       down,
       downMonths: state.lab.equipmentDown[def.id] || 0,
       price,
@@ -5794,11 +6678,64 @@ function selectEquipment(state) {
   });
 }
 
+/** 1.1 实验室空间：房间 → 台位 → 台子 → 仪器（LAB-SPACE §10 的 UI 数据源）。 */
+function selectLabSpace(state) {
+  const lab = state.lab;
+  const money = state.player.money;
+  const rank = state.player.rankIndex;
+  const rooms = (lab.rooms || []).map((room, roomIdx) => {
+    const def = ROOMS[roomIdx] || {};
+    return {
+      roomIdx, id: room.id, name: def.name || room.id, flavor: def.flavor || '', owned: true,
+      cols: ROOM_SLOT_COLS,
+      slots: room.slots.map((bench, slot) => {
+        if (!bench) return { slot, empty: true };
+        const size = BENCH_MAP[bench.type];
+        return {
+          slot, empty: false, uid: bench.uid, type: bench.type, name: size.name, w: size.w, h: size.h,
+          sellRefund: Math.round(size.price * SELL_REFUND_RATE * 100) / 100,
+          canSell: bench.items.length === 0,
+          items: bench.items.map((it) => {
+            const d = INSTRUMENT_MAP[it.inst];
+            const fp = footprint(it.inst, it.rot);
+            return {
+              uid: it.uid, inst: it.inst, name: d.name, tier: d.tier, tierLabel: d.tierLabel, x: it.x, y: it.y, rot: it.rot,
+              w: fp.w, h: fp.h, flavor: d.flavor || '', bonusPct: Math.round(d.bonus * 100), maintain: d.maintain,
+              down: (lab.equipmentDown[it.inst] || 0) > 0,
+              sellRefund: Math.round(instrumentPrice(it.inst) * SELL_REFUND_RATE * 100) / 100,
+            };
+          }),
+        };
+      }),
+    };
+  });
+  const nextIdx = rooms.length;
+  const nextRoomDef = nextIdx < ROOM_MAX ? ROOMS[nextIdx] : null;
+  const nextRoom = nextRoomDef ? (() => {
+    const reason = rank < nextRoomDef.rankGate ? '需头衔 ' + nextRoomDef.rankGate : (money < nextRoomDef.price ? '经费不足' : '');
+    return { roomIdx: nextIdx, id: nextRoomDef.id, name: nextRoomDef.name, price: nextRoomDef.price, rankGate: nextRoomDef.rankGate, flavor: nextRoomDef.flavor, canBuy: !reason, reason };
+  })() : null;
+  const freeSlot = findEmptySlot(lab);
+  const benches = BENCHES.map((b) => {
+    const reason = rank < b.rankGate ? '需头衔 ' + b.rankGate : (!freeSlot ? '没有空台位' : (money < b.price ? '经费不足' : ''));
+    return { id: b.id, name: b.name, w: b.w, h: b.h, cells: b.w * b.h, price: b.price, rankGate: b.rankGate, canBuy: !reason, reason };
+  });
+  return {
+    rooms,
+    lockedRooms: ROOMS.slice(nextIdx).map((d) => ({ id: d.id, name: d.name, price: d.price, rankGate: d.rankGate, flavor: d.flavor })),
+    nextRoom,
+    benches,
+    summary: spaceSummary(lab),
+    text: { ...LAB_TEXT },
+  };
+}
+
 function selectLab(state) {
   return {
     bonusPct: Math.round(equipmentBonus(state.lab) * 100),
     maintain: maintenanceTotal(state.lab),
     equipment: selectEquipment(state),
+    space: selectLabSpace(state),
   };
 }
 
@@ -6267,7 +7204,7 @@ function uiIcon(name, opts = {}) {
 const UI_SUBTABS = [
   { id: 'overview', label: '总览', hint: '身份、资源、论文账目、晋级进度' },
   { id: 'students', label: '学生名册', hint: '名额、学生、工资、一作' },
-  { id: 'instruments', label: '仪器台', hint: '持有量、加成、维护费' },
+  { id: 'instruments', label: '仪器台', hint: '实验室空间：房间、实验台、仪器摆放与申购' },
   { id: 'consumables', label: '耗材库', hint: '消耗模式与采购' },
 ];
 
@@ -6487,7 +7424,7 @@ const UI_PAPER_SHOP = {
   honest: '购买一作＝花钱买署名，没有真实产出；越厉害的文章越贵。',
   fallbackButton: '买一篇一作',
   fallbackNote: '没取到档位价格表（vm.consts.papers.price）：购买一作暂时不可用，缺档位的请求引擎会直接拒绝。先去「学生名册」抢一篇结题产出的。',
-  integrityHint: '购买一作便宜但掉诚信；抢一作更伤人和诚信。系统不骂你，账都记在纪事里。',
+  integrityHint: '买一作要花钱、掉诚信；抢一作不花钱，但更伤人、也更伤诚信。系统不骂你，账都记在纪事里。',
 };
 
 /** 抢一作：按「结题产出的某一篇」操作 + 二次确认（数值全部由 vm.consts.papers 提供）。 */
@@ -6813,6 +7750,14 @@ function uiDeltaTone(v) {
   if (!Number.isFinite(n) || Math.round(n * 10) === 0) return 'flat';
   return n > 0 ? 'up' : 'down';
 }
+// Presentation-only disclosure memory survives store-driven rerenders.
+const uiDisclosureState = new Map();
+function uiDisclosure(key, label, children, initiallyOpen) {
+  const mobile = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 600px)').matches;
+  const open = uiDisclosureState.has(key) ? uiDisclosureState.get(key) : (initiallyOpen === undefined ? !mobile : initiallyOpen);
+  const node = h('details', { class: 'ledger-details', attrs: open ? { open: '' } : {}, on: { toggle: (ev) => uiDisclosureState.set(key, ev.target.open) } }, [h('summary', { text: label }), h('div', { class: 'disclosure-body' }, children)]);
+  return node;
+}
 
 /* ── src/ui/hud.js ── */
 /**
@@ -6976,6 +7921,206 @@ function renderHud(vm) {
   return vm;
 }
 
+/* ── src/ui/views/lab.js ── */
+/**
+ * views/lab.js —— 1.1 实验室空间：房间 → 台位 → 实验台网格 → 仪器（背包式摆放）
+ *
+ * 只读 vm.crew.lab（selectLab / selectLabSpace），所有写操作通过 data-action 交给 app.js 去 dispatch。
+ * 「手上拿着的仪器」(ctx.labPick) 是纯展示状态：只存在 app.js 的 localUi，不进 state。
+ * 占格预览只做几何判断（越界/重叠），真正能否放下以 core 的 fits 为准（失败会 toast，不扣钱）。
+ */
+
+
+
+const UI_LAB = {
+  title: '实验室 · 空间台账',
+  subtitle: '房间里摆实验台，台面上摆仪器；仪器只看「摆进来了几台」，放不下就加台、开新房。',
+  shopTitle: '仪器台 · 申购目录',
+  shopSub: '选择仪器查看价格与规格；拿起后点台面空格放置，或自动摆放。',
+  holdBuy: '手上：待采购',
+  holdMove: '手上：搬动中',
+  holdTip: '点选空格放置；可用下方按钮旋转或取消。桌面也支持 R / Esc。',
+  emptySlot: '空台位',
+  roomLocked: '尚未申请',
+};
+
+function uiFootprint(w, hh) {
+  const cells = [];
+  for (let i = 0; i < w * hh; i += 1) cells.push(h('span', { class: 'fp-cell' }));
+  return h('span', { class: 'fp', attrs: { style: 'grid-template-columns:repeat(' + w + ',8px)', 'aria-hidden': 'true' } }, cells);
+}
+
+function uiLabItem(item, bench, pick) {
+  const selected = pick && pick.mode === 'move' && pick.uid === item.uid;
+  return h('button', {
+    class: 'lab-item tone-' + (item.down ? 'bad' : item.tier) + (selected ? ' is-selected' : ''),
+    text: item.name,
+    attrs: {
+      type: 'button',
+      draggable: 'true',
+      title: item.name + '（' + item.w + '×' + item.h + '）· 加成 +' + item.bonusPct + '% · 维护 ' + uiNum1(item.maintain) + ' 万/月' + (item.down ? ' · 停机中' : '') + (item.flavor ? '\n' + item.flavor : ''),
+      style: 'grid-column:' + (item.x + 1) + ' / span ' + item.w + ';grid-row:' + (item.y + 1) + ' / span ' + item.h,
+    },
+    dataset: { action: 'lab-item', uid: item.uid, benchUid: bench.uid, w: item.w, h: item.h, rot: item.rot ? '1' : '0' },
+  });
+}
+
+function uiBench(bench, pick) {
+  const cells = [];
+  for (let y = 0; y < bench.h; y += 1) {
+    for (let x = 0; x < bench.w; x += 1) {
+      cells.push(h('button', {
+        class: 'lab-cell',
+        attrs: { type: 'button', 'aria-label': bench.name + ' 第 ' + (y + 1) + ' 行第 ' + (x + 1) + ' 格', style: 'grid-column:' + (x + 1) + ';grid-row:' + (y + 1) },
+        dataset: { action: 'lab-cell', benchUid: bench.uid, x, y },
+      }));
+    }
+  }
+  // 占用表交给前端几何预览（uid:x,y,w,h;...），只是把 vm 的摆放原样序列化
+  const occ = bench.items.map((it) => [it.uid, it.x, it.y, it.w, it.h].join(',')).join(';');
+  const used = bench.items.reduce((n, it) => n + it.w * it.h, 0);
+  return h('div', { class: 'bench' + (pick ? ' is-holding' : ''), dataset: { role: 'bench', uid: bench.uid } }, [
+    h('div', { class: 'bench-head' }, [
+      h('strong', { class: 'bench-name', text: bench.name }),
+      h('span', { class: 'bench-size', text: bench.w + '×' + bench.h + ' · 占 ' + used + '/' + (bench.w * bench.h) }),
+      bench.canSell
+        ? button('拆台 +' + uiNum1(bench.sellRefund) + ' 万', { action: 'lab-sell-bench', benchUid: bench.uid }, { class: 'btn-ghost btn-xs', title: '空台才能拆，回收半价' })
+        : null,
+    ]),
+    h('div', {
+      class: 'bench-grid',
+      attrs: { style: 'grid-template-columns:repeat(' + bench.w + ',var(--cell));grid-template-rows:repeat(' + bench.h + ',var(--cell))' },
+      dataset: { role: 'bench-grid', benchUid: bench.uid, bw: bench.w, bh: bench.h, occ },
+    }, cells.concat(bench.items.map((it) => uiLabItem(it, bench, pick)))),
+  ]);
+}
+
+function uiEmptySlot(room, slot, space) {
+  return h('div', { class: 'bench bench-empty', dataset: { role: 'slot-empty' } }, [
+    h('span', { class: 'bench-empty-k', text: UI_LAB.emptySlot + ' ' + (slot.slot + 1) }),
+    h('div', { class: 'bench-empty-actions' }, space.benches.map((b) => {
+      const blocked = b.reason && b.reason !== '没有空台位' ? b.reason : '';
+      return button('放' + b.name + ' ' + uiNum1(b.price) + ' 万', { action: 'lab-buy-bench', type: b.id, roomIdx: room.roomIdx, slot: slot.slot }, {
+        class: 'btn-xs', disabled: Boolean(blocked), title: blocked || (b.w + '×' + b.h + '，共 ' + b.cells + ' 格'),
+      });
+    })),
+  ]);
+}
+
+function uiRoom(room, space, pick) {
+  const benches = room.slots.filter((s) => !s.empty).length;
+  return uiDisclosure('room-' + room.id, room.name + ' · ' + benches + '/' + room.slots.length + ' 台位', [h('section', { class: 'room', dataset: { role: 'room', id: room.id } }, [
+    h('header', { class: 'room-head' }, [
+      h('span', { class: 'room-seal', text: room.id }),
+      h('div', { class: 'room-title-wrap' }, [
+        h('strong', { class: 'room-name', text: room.name }),
+        room.flavor ? h('span', { class: 'room-flavor', text: room.flavor }) : null,
+      ]),
+      h('span', { class: 'room-count', text: '台位 ' + benches + '/' + room.slots.length }),
+    ]),
+    h('div', { class: 'room-floor', attrs: { style: 'grid-template-columns:repeat(' + room.cols + ',minmax(0,1fr))' } },
+      room.slots.map((s, i) => uiDisclosure('slot-' + room.id + '-' + s.slot, '台位 ' + (s.slot + 1) + ' · ' + (s.empty ? '空闲，可添加实验台' : s.name), [s.empty ? uiEmptySlot(room, s, space) : uiBench(s, pick)], i === 0))),
+  ])], space.rooms[0].id === room.id);
+}
+
+function uiNextRoom(space) {
+  const next = space.nextRoom;
+  const later = space.lockedRooms.slice(1);
+  if (!next) return h('p', { class: 'room-maxed', text: space.text.roomsMaxed });
+  return h('div', { class: 'room room-locked', dataset: { role: 'room-next' } }, [
+    h('header', { class: 'room-head' }, [
+      h('span', { class: 'room-seal is-locked', text: next.id }),
+      h('div', { class: 'room-title-wrap' }, [
+        h('strong', { class: 'room-name', text: next.name }),
+        h('span', { class: 'room-flavor', text: next.flavor }),
+      ]),
+      button('申请这间 ' + uiNum1(next.price) + ' 万', { action: 'lab-buy-room' }, { kind: 'primary', class: 'btn-xs', disabled: !next.canBuy, title: next.reason || '新房间带 4 个空台位' }),
+    ]),
+    next.reason ? h('p', { class: 'muted', text: '暂时批不下来：' + next.reason }) : null,
+    later.length ? h('p', { class: 'room-later', text: '之后还能申请：' + later.map((r) => r.name + '（' + r.price + ' 万 · 头衔 ' + r.rankGate + '）').join('、') }) : null,
+  ]);
+}
+
+function uiHeldBar(vm, pick) {
+  if (!pick) return null;
+  const isMove = pick.mode === 'move';
+  return h('div', { class: 'held-bar' + (isMove ? ' is-move' : ''), dataset: { role: 'held-bar' } }, [
+    tag(isMove ? UI_LAB.holdMove : UI_LAB.holdBuy, isMove ? 'info' : 'warn'),
+    h('strong', { class: 'held-name', text: pick.name + (isMove ? '' : ' · ' + uiNum1(pick.price) + ' 万') }),
+    uiFootprint(pick.w, pick.h),
+    h('span', { class: 'held-size', text: pick.w + '×' + pick.h }),
+    h('span', { class: 'held-tip', text: UI_LAB.holdTip }),
+    h('span', { class: 'held-actions' }, [
+      pick.w !== pick.h ? button('旋转', { action: 'lab-rotate' }, { class: 'btn-xs' }) : null,
+      isMove ? button('卖掉 +' + uiNum1(pick.refund) + ' 万', { action: 'lab-sell-item', uid: pick.uid }, { class: 'btn-xs btn-danger-ghost', title: '转给兄弟课题组，回收半价' }) : null,
+      button('取消放置', { action: 'lab-cancel' }, { class: 'btn-ghost btn-xs' }),
+    ]),
+  ]);
+}
+
+let uiSelectedEquipment = null;
+function uiShopCard(vm, pick) {
+  const lab = vm.crew.lab;
+  const rows = lab.equipment.map((e) => {
+    const holding = pick && pick.mode === 'buy' && pick.id === e.id;
+    const pickBlocked = e.reason && e.reason !== '空间不足' ? e.reason : '';
+    return h('div', {
+      class: 'shop-item tone-' + (e.down ? 'bad' : e.tier) + (holding ? ' is-holding' : ''),
+      attrs: { draggable: pickBlocked ? 'false' : 'true' },
+      dataset: { role: 'shop-item', id: e.id },
+    }, [
+      h('div', { class: 'shop-item-head' }, [
+        uiFootprint(e.w, e.h),
+        h('strong', { class: 'shop-item-name', text: e.name }),
+        tag(e.tierLabel, e.tier === 'major' ? 'good' : 'mute'),
+        e.owned ? h('span', { class: 'shop-item-owned', text: '已摆 ' + e.owned + ' 台' }) : null,
+        e.down ? tag('停机 ' + e.downMonths + ' 月', 'bad') : null,
+      ]),
+      h('div', { class: 'shop-item-stats' }, [
+        uiInlineStat('占格', e.w + '×' + e.h),
+        uiInlineStat('加成', '+' + e.bonusPct + '%'),
+        uiInlineStat('维护', uiNum1(e.maintain) + ' 万/月'),
+      ]),
+      e.flavor ? h('p', { class: 'shop-item-flavor', text: e.flavor }) : null,
+      h('div', { class: 'shop-item-actions' }, [
+        button(holding ? '已拿在手上' : '拿起来 ' + uiNum1(e.price) + ' 万', { action: 'lab-pick', id: e.id }, {
+          kind: holding ? null : 'primary', class: 'btn-xs' + (holding ? ' active' : ''), disabled: Boolean(pickBlocked), title: pickBlocked || '拿在手上，再点台面格子放下',
+        }),
+        button('自动摆放', { action: 'buy-equipment', id: e.id }, { class: 'btn-xs', disabled: !e.canBuy, title: e.reason || '放到第一个能放下的位置' }),
+        e.reason ? h('span', { class: 'muted', text: e.reason }) : null,
+      ]),
+    ]);
+  });
+  const chosen = lab.equipment.some((e) => e.id === uiSelectedEquipment) ? uiSelectedEquipment : (lab.equipment[0] || {}).id;
+  const select = h('select', { attrs: { 'aria-label': '选择申购仪器' }, on: { change: (ev) => { uiSelectedEquipment = ev.target.value; rows.forEach((row, i) => { row.hidden = lab.equipment[i].id !== uiSelectedEquipment; }); } } }, lab.equipment.map((e) => h('option', { text: e.name + ' · ' + uiNum1(e.price) + ' 万' + (e.reason ? ' · ' + e.reason : ''), attrs: { value: e.id, ...(e.id === chosen ? { selected: '' } : {}) } })));
+  rows.forEach((row, i) => { if (lab.equipment[i].id !== chosen) row.setAttribute('hidden', ''); });
+  return uiCard(UI_LAB.shopTitle, UI_LAB.shopSub, null, [
+    h('label', { class: 'catalog-select' }, [h('span', { text: '申购仪器 · 共 ' + lab.equipment.length + ' 种' }), select]),
+    h('div', { class: 'shop-grid' }, rows),
+    uiNote('大幅仪器贵但加成高；停机当月不提供加成。仪器没有持有上限，唯一的限制是台面空间。'),
+  ]);
+}
+
+/** 课题组 →「实验室」分栏：空间台账 + 申购目录。 */
+function renderLabSpace(vm, ctx) {
+  const lab = vm.crew.lab;
+  const space = lab.space;
+  const pick = (ctx && ctx.labPick) || null;
+  const sum = space.summary;
+  const head = h('div', { class: 'slot-row' }, [
+    uiInlineStat('实验室', sum.rooms + ' / ' + sum.roomMax + ' 间'),
+    uiInlineStat('实验台', sum.benches + ' 张 · 空台位 ' + sum.slotsFree),
+    uiInlineStat('台面格子', sum.used + ' / ' + sum.cells, sum.free <= 1 ? 'warn' : null),
+    uiInlineStat('全仪器加成', lab.bonusPct + '%'),
+    uiInlineStat('每月维护', uiNum1(lab.maintain) + ' 万'),
+  ]);
+  const rooms = h('div', { class: 'rooms' }, space.rooms.map((r) => uiRoom(r, space, pick)).concat([uiNextRoom(space)]));
+  return [
+    uiCard(UI_LAB.title, UI_LAB.subtitle, null, [head, uiHeldBar(vm, pick), rooms], { class: 'card-lab' + (pick ? ' is-holding' : '') }),
+    uiShopCard(vm, pick),
+  ];
+}
+
 /* ── src/ui/views/crew.js ── */
 /**
  * views/crew.js —— 课题组：总览 / 学生名册 / 仪器台 / 耗材库
@@ -6983,6 +8128,7 @@ function renderHud(vm) {
  * 全部数据来自 vm.crew、vm.hud、vm.actions；本文件不含任何游戏数值计算。
  * 分栏（学生/仪器/耗材）由 app.js 的本地 UI 状态决定，切换不写入 state。
  */
+
 
 
 
@@ -7183,6 +8329,7 @@ function uiStudentCard(vm, s, ctx) {
       s.grudge ? tag('心结中', 'bad') : null,
       s.deferMonths > 0 ? tag('延毕 ' + s.deferMonths + ' 年', 'bad') : null,
     ]),
+    uiDisclosure('student-' + s.id, '能力、工资与论文 · 展开管理', [
     h('div', { class: 'student-bars' }, [
       h('div', { class: 'student-bar' }, [h('span', { class: 'student-bar-k', text: '幸福度 ' + s.happiness }), uiInlineBar(s.happiness, s.happinessTone === 'good' ? 'good' : (s.happinessTone === 'bad' ? 'bad' : 'warn'))]),
       h('div', { class: 'student-bar' }, [h('span', { class: 'student-bar-k', text: '毕业进度 ' + s.degreeProgress + '%' }), uiInlineBar(s.degreeProgress, 'info')]),
@@ -7202,6 +8349,7 @@ function uiStudentCard(vm, s, ctx) {
       ])
       : null,
     active ? uiGrabBlock(vm, s, ctx) : null,
+    ]),
   ]);
 }
 
@@ -7266,35 +8414,6 @@ function uiPaperShopCard(vm) {
   ]);
 }
 
-/* ── 仪器台 ── */
-function uiInstrumentsCard(vm) {
-  const lab = vm.crew.lab;
-  const items = lab.equipment;
-  const head = h('div', { class: 'slot-row' }, [
-    uiInlineStat('全仪器加成', lab.bonusPct + '%'),
-    uiInlineStat('每月维护', uiNum1(lab.maintain) + ' 万'),
-    uiInlineStat('持有仪器', items.reduce((n, e) => n + e.owned, 0) + ' 台'),
-  ]);
-  const grid = h('div', { class: 'equip-grid' }, items.map((e) => h('div', { class: 'equip tone-' + (e.down ? 'bad' : (e.tier === 'major' ? 'major' : 'minor')) }, [
-    h('div', { class: 'equip-head' }, [
-      h('strong', { class: 'equip-name', text: e.name }),
-      tag(e.tierLabel, e.tier === 'major' ? 'good' : 'mute'),
-      e.down ? tag('停机 ' + e.downMonths + ' 个月', 'bad') : null,
-    ]),
-    h('div', { class: 'equip-stats' }, [
-      uiInlineStat('持有', e.owned + ' / ' + e.holdCap),
-      uiInlineStat('加成', '+' + e.bonusPct + '% / 台'),
-      uiInlineStat('维护', uiNum1(e.maintain) + ' 万/月'),
-      uiInlineStat('购买价', uiNum1(e.price) + ' 万'),
-    ]),
-    h('div', { class: 'equip-buy' }, [
-      button('买一台 ' + uiNum1(e.price) + ' 万', { action: 'buy-equipment', id: e.id }, { class: 'btn-xs', disabled: !e.canBuy, title: e.reason || '' }),
-      e.reason ? h('span', { class: 'muted', text: e.reason }) : null,
-    ]),
-  ])));
-  return uiCard('仪器台', '仪器是项目承接门槛，也是科研效率乘区；买得越多，每月维护费越贵', null, [head, grid, uiNote('小幅仪器便宜好养，大幅仪器贵但加成高；停机当月不提供加成。')]);
-}
-
 /* ── 耗材库 ── */
 function uiConsumablesCard(vm) {
   const a = vm.actions;
@@ -7341,13 +8460,13 @@ function uiConsumablesCard(vm) {
 }
 
 /**
- * 课题组页：分栏 = 总览 / 学生名册 / 仪器台 / 耗材库。
+ * 课题组页：分栏 = 总览 / 学生名册 / 实验室（空间 + 仪器台）/ 耗材库。
  * 分栏切换只改 app.js 的本地 UI 状态；总览是默认落点，也是「我现在该做什么」的答案页。
  */
 function renderCrew(vm, ctx) {
   const section = (ctx && ctx.labSection) || 'overview';
   const body = [uiSubTabs(UI_SUBTABS, section, 'lab-section')];
-  if (section === 'instruments') body.push(uiInstrumentsCard(vm));
+  if (section === 'instruments') body.push(renderLabSpace(vm, ctx));
   else if (section === 'consumables') body.push(uiConsumablesCard(vm));
   else if (section === 'students') {
     body.push(uiStudentsCard(vm, ctx));
@@ -7457,6 +8576,7 @@ function uiProjectCard(vm, p) {
       p.overdue ? tag('逾期 ' + p.overdueMonths + ' 个月', 'bad') : null,
     ]),
     bar(p.progressPct, p.overdue ? 'bad' : 'good', p.progressPct + '%'),
+    uiDisclosure('project-' + p.instanceId, '管理项目 · 分配学生 / 处理难点（' + p.openHardpoints + '）', [
     h('div', { class: 'project-meta' }, [
       uiInlineStat('工作量', uiNum1(p.progress) + ' / ' + uiNum1(p.workload)),
       uiInlineStat('期限', p.deadlineText + (countdown ? '（' + countdown + '）' : '')),
@@ -7487,6 +8607,7 @@ function uiProjectCard(vm, p) {
     ]),
     uiNote('进度满工作量时自动结题：尾款到账、论文见刊；有未解决难点会按难点数量降档。'),
     h('p', { class: 'lead-note', text: UI_LEAD.note }),
+    ]),
   ]);
 }
 
@@ -7597,7 +8718,9 @@ function uiPaperLedger(vm, p) {
     tag((papers && papers.labels && papers.labels[paper.tier]) || paper.tier, 'mute'),
     h('span', { class: 'paper-ledger-if', text: 'IF ' + uiNum1(paper.if) }),
     h('span', { class: 'paper-ledger-author', text: '一作 ' + (paper.firstAuthorName || '—') }),
-    paper.grabbed ? tag('已被抢', 'bad') : tag('一作还在学生名下', 'good'),
+    paper.grabbed
+      ? tag('已被抢', 'bad')
+      : (paper.byPlayer ? tag('一作在你名下', 'good') : tag('一作还在学生名下 · 可抢', 'info')),
   ])));
 }
 
@@ -8139,7 +9262,7 @@ function uiRenameValues() {
 
 function uiModalShell(title, subtitleText, tone, bodyNodes, actions) {
   return h('div', { class: 'modal-backdrop' }, [
-    h('div', { class: 'modal tone-' + (tone || 'plain'), dataset: { role: 'modal' } }, [
+    h('div', { class: 'modal tone-' + (tone || 'plain'), attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-label': title }, dataset: { role: 'modal' } }, [
       h('div', { class: 'modal-head' }, [
         h('h2', { class: 'modal-title', text: title }),
         subtitleText ? h('p', { class: 'modal-sub', text: subtitleText }) : null,
@@ -8394,6 +9517,8 @@ function createApp(options) {
     grabConfirm: null,
     // 首次进项目页的一次性引导（t34，DEV §7.4 第 5 条）：同样只存本地状态
     projectsIntroDone: false,
+    // 1.1 实验室空间：手上拿着的仪器（{mode:'buy'|'move', id, uid, name, w, h, rot, price, refund}），只存本地
+    labPick: null,
   };
 
   const HANDLERS = {
@@ -8429,10 +9554,32 @@ function createApp(options) {
       if (el.dataset.section) localUi.labSection = el.dataset.section;
       dispatch('ui/setTab', { tab: el.dataset.tab });
     },
-    'lab-section': (el) => { localUi.labSection = el.dataset.section || 'overview'; render(); },
+    'lab-section': (el) => { localUi.labSection = el.dataset.section || 'overview'; localUi.labPick = null; render(); },
     'chronicle-filter': (el) => { localUi.chronicleFilter = el.dataset.filter || 'all'; render(); },
     'wage': (el) => dispatch('game/setWage', { studentId: el.dataset.studentId, tier: el.dataset.tier }),
-    'buy-equipment': (el) => dispatch('game/buyEquipment', { id: el.dataset.id }),
+    'buy-equipment': (el) => { localUi.labPick = null; dispatch('game/buyEquipment', { id: el.dataset.id }); },
+    // ── 1.1 实验室空间：拿起 / 搬动 / 放下 / 旋转 / 卖掉；落点合法性以 core 为准 ──
+    'lab-pick': (el) => {
+      const cur = localUi.labPick;
+      if (cur && cur.mode === 'buy' && cur.id === el.dataset.id) localUi.labPick = null;
+      else localUi.labPick = pickFromShop(el.dataset.id);
+      render();
+      const held = root && root.querySelector('[data-role=held-bar]');
+      if (held && held.scrollIntoView) held.scrollIntoView({ block: 'center' });
+    },
+    'lab-item': (el) => {
+      const cur = localUi.labPick;
+      if (cur && cur.mode === 'move' && cur.uid === el.dataset.uid) localUi.labPick = null;
+      else localUi.labPick = pickFromItem(el.dataset.uid);
+      render();
+    },
+    'lab-rotate': () => rotatePick(),
+    'lab-cancel': () => { localUi.labPick = null; render(); },
+    'lab-cell': (el) => placeAt(el.dataset.benchUid, Number(el.dataset.x), Number(el.dataset.y)),
+    'lab-sell-item': (el) => { localUi.labPick = null; dispatch('lab/sellItem', { itemUid: el.dataset.uid }); render(); },
+    'lab-sell-bench': (el) => dispatch('lab/sellBench', { benchUid: el.dataset.benchUid }),
+    'lab-buy-bench': (el) => dispatch('lab/buyBench', { type: el.dataset.type, roomIdx: Number(el.dataset.roomIdx), slot: Number(el.dataset.slot) }),
+    'lab-buy-room': () => dispatch('lab/buyRoom', {}),
     'accept-project': (el) => dispatch('game/acceptProject', { offerId: el.dataset.offerId, studentIds: pickTeamStudents() }),
     'lock-offer': (el) => dispatch('game/lockOffer', { offerId: el.dataset.offerId }),
     'hire-student': (el) => dispatch('game/hireStudent', { offerId: el.dataset.offerId }),
@@ -8490,6 +9637,133 @@ function createApp(options) {
     return store.dispatch({ type, payload: payload || {} });
   }
 
+  /* ── 1.1 实验室空间：拿起/放下（全部数据来自上一帧 vm，写操作只走 dispatch） ── */
+  function labSpaceVm() {
+    return lastVm && lastVm.crew && lastVm.crew.lab ? lastVm.crew.lab : null;
+  }
+
+  function pickFromShop(id) {
+    const lab = labSpaceVm();
+    const e = lab ? lab.equipment.find((x) => x.id === id) : null;
+    if (!e) return null;
+    return { mode: 'buy', id: e.id, name: e.name, w: e.w, h: e.h, baseW: e.w, baseH: e.h, rot: false, price: e.price };
+  }
+
+  function pickFromItem(uid) {
+    const lab = labSpaceVm();
+    if (!lab) return null;
+    for (const room of lab.space.rooms) {
+      for (const s of room.slots) {
+        if (s.empty) continue;
+        const it = s.items.find((x) => x.uid === uid);
+        if (it) return { mode: 'move', uid: it.uid, id: it.inst, name: it.name, w: it.w, h: it.h, rot: Boolean(it.rot), refund: it.sellRefund };
+      }
+    }
+    return null;
+  }
+
+  function rotatePick() {
+    const p = localUi.labPick;
+    if (!p || p.w === p.h) return;
+    localUi.labPick = { ...p, w: p.h, h: p.w, rot: !p.rot };
+    render();
+  }
+
+  function placeAt(benchUid, x, y) {
+    const p = localUi.labPick;
+    if (!p || !benchUid || !Number.isInteger(x) || !Number.isInteger(y)) return;
+    const before = store.getState().lab;
+    if (p.mode === 'buy') dispatch('lab/buyInstrument', { id: p.id, benchUid, x, y, rot: Boolean(p.rot) });
+    else dispatch('lab/moveItem', { itemUid: p.uid, benchUid, x, y, rot: Boolean(p.rot) });
+    // 放成功（摆放变了）才把手上的东西清掉；放不下时 core 会 toast，手上保持原样方便换位置
+    if (store.getState().lab !== before && JSON.stringify(store.getState().lab.rooms) !== JSON.stringify(before.rooms)) localUi.labPick = null;
+    render();
+  }
+
+  /** 占格预览：只做纯几何（越界/重叠），数据是 bench-grid 上 vm 序列化来的占用表。 */
+  function clearPreview() {
+    if (!root || typeof root.querySelectorAll !== 'function') return;
+    for (const n of root.querySelectorAll('.lab-cell.is-ok, .lab-cell.is-bad')) n.classList.remove('is-ok', 'is-bad');
+  }
+
+  function previewAt(cell) {
+    clearPreview();
+    const p = localUi.labPick;
+    if (!p || !cell || typeof cell.closest !== 'function') return;
+    const grid = cell.closest('[data-role="bench-grid"]');
+    if (!grid) return;
+    const bw = Number(grid.dataset.bw);
+    const bh = Number(grid.dataset.bh);
+    const x0 = Number(cell.dataset.x);
+    const y0 = Number(cell.dataset.y);
+    const occ = String(grid.dataset.occ || '').split(';').filter(Boolean).map((s) => s.split(','))
+      .filter((a) => !(p.mode === 'move' && a[0] === p.uid))
+      .map((a) => ({ x: Number(a[1]), y: Number(a[2]), w: Number(a[3]), h: Number(a[4]) }));
+    const inBounds = x0 + p.w <= bw && y0 + p.h <= bh;
+    const hit = (x, y) => occ.some((o) => x >= o.x && x < o.x + o.w && y >= o.y && y < o.y + o.h);
+    let ok = inBounds;
+    const cells = [];
+    for (let y = y0; y < Math.min(bh, y0 + p.h); y += 1) {
+      for (let x = x0; x < Math.min(bw, x0 + p.w); x += 1) {
+        if (hit(x, y)) ok = false;
+        cells.push(grid.querySelector('[data-action="lab-cell"][data-x="' + x + '"][data-y="' + y + '"]') || null);
+      }
+    }
+    for (const n of cells) if (n) n.classList.add(ok ? 'is-ok' : 'is-bad');
+    const bar = root.querySelector('[data-role="held-bar"]');
+    if (bar) bar.dataset.fit = ok ? 'ok' : 'bad';
+  }
+
+  function cellOf(target) {
+    return target && typeof target.closest === 'function' ? target.closest('[data-action="lab-cell"]') : null;
+  }
+
+  function onOver(ev) { if (localUi.labPick) previewAt(cellOf(ev.target)); }
+  function onLeave(ev) { if (localUi.labPick && !cellOf(ev.relatedTarget)) clearPreview(); }
+
+  function onDragStart(ev) {
+    const t = ev.target;
+    if (!t || typeof t.closest !== 'function') return;
+    const shop = t.closest('[data-role="shop-item"]');
+    const item = t.closest('[data-action="lab-item"]');
+    const pick = item ? pickFromItem(item.dataset.uid) : (shop ? pickFromShop(shop.dataset.id) : null);
+    if (!pick) return;
+    localUi.labPick = pick;
+    if (ev.dataTransfer) {
+      ev.dataTransfer.effectAllowed = 'move';
+      try { ev.dataTransfer.setData('text/plain', pick.name); } catch (e) { /* 部分浏览器限制 setData */ }
+    }
+    // 不能在 dragstart 里重渲染（会把拖拽源节点换掉）；下一帧再给台面加「拿着东西」样式
+    setTimeout(() => { if (root) for (const b of root.querySelectorAll('.bench, .card-lab')) b.classList.add('is-holding'); }, 0);
+  }
+
+  function onDragOver(ev) {
+    const cell = cellOf(ev.target);
+    if (!cell || !localUi.labPick) return;
+    ev.preventDefault();
+    previewAt(cell);
+  }
+
+  function onDrop(ev) {
+    const cell = cellOf(ev.target);
+    if (!cell || !localUi.labPick) return;
+    ev.preventDefault();
+    placeAt(cell.dataset.benchUid, Number(cell.dataset.x), Number(cell.dataset.y));
+  }
+
+  function onDragEnd() {
+    // 拖到台面外：撤销「拿着」状态，界面回到原样
+    setTimeout(() => { clearPreview(); render(); }, 0);
+  }
+
+  function onKey(ev) {
+    if (!localUi.labPick) return;
+    const tag = ev.target && ev.target.tagName ? String(ev.target.tagName).toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea') return;
+    if (ev.key === 'Escape') { localUi.labPick = null; render(); }
+    else if (ev.key === 'r' || ev.key === 'R') rotatePick();
+  }
+
   function openModal(kind) {
     localUi.modal = kind ? { kind } : null;
     render();
@@ -8514,6 +9788,7 @@ function createApp(options) {
     localUi.labSection = 'overview';
     localUi.chronicleFilter = 'all';
     localUi.grabConfirm = null;
+    localUi.labPick = null;
     lastVm = null;
     render();
   }
@@ -8524,6 +9799,7 @@ function createApp(options) {
     localUi.modal = null;
     localUi.hideEnding = false;
     localUi.grabConfirm = null;
+    localUi.labPick = null;
     render();
     if (typeof io.onSave === 'function') io.onSave();
   }
@@ -8636,7 +9912,16 @@ function createApp(options) {
   }
 
   function start() {
-    if (root) root.addEventListener('click', onClick);
+    if (root) {
+      root.addEventListener('click', onClick);
+      root.addEventListener('mouseover', onOver);
+      root.addEventListener('mouseout', onLeave);
+      root.addEventListener('dragstart', onDragStart);
+      root.addEventListener('dragover', onDragOver);
+      root.addEventListener('drop', onDrop);
+      root.addEventListener('dragend', onDragEnd);
+    }
+    if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('keydown', onKey);
     unsubscribe = store.subscribe(() => render(), { immediate: false });
     render();
     // 第一次进游戏（没有存档）时，先把「怎么玩」摊开一次。
@@ -8651,7 +9936,11 @@ function createApp(options) {
   }
 
   function destroy() {
-    if (root) root.removeEventListener('click', onClick);
+    if (root) {
+      root.removeEventListener('click', onClick);
+      for (const [k, fn] of [['mouseover', onOver], ['mouseout', onLeave], ['dragstart', onDragStart], ['dragover', onDragOver], ['drop', onDrop], ['dragend', onDragEnd]]) root.removeEventListener(k, fn);
+    }
+    if (typeof document !== 'undefined' && document.removeEventListener) document.removeEventListener('keydown', onKey);
     if (typeof unsubscribe === 'function') unsubscribe();
   }
 

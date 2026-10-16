@@ -22,7 +22,7 @@ export function uiRenameValues() {
 
 function uiModalShell(title, subtitleText, tone, bodyNodes, actions) {
   return h('div', { class: 'modal-backdrop' }, [
-    h('div', { class: 'modal tone-' + (tone || 'plain'), dataset: { role: 'modal' } }, [
+    h('div', { class: 'modal tone-' + (tone || 'plain'), attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-label': title }, dataset: { role: 'modal' } }, [
       h('div', { class: 'modal-head' }, [
         h('h2', { class: 'modal-title', text: title }),
         subtitleText ? h('p', { class: 'modal-sub', text: subtitleText }) : null,

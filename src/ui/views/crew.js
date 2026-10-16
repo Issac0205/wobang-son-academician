@@ -5,7 +5,8 @@
  * 分栏（学生/仪器/耗材）由 app.js 的本地 UI 状态决定，切换不写入 state。
  */
 
-import { h, bar, tag, button, uiCard, uiSubTabs, uiEmpty, uiKv, uiNote, uiInlineStat, uiInlineBar, uiPaperTiles, uiGoto, uiNum1, uiLevelTone, uiDeltaText } from '../dom.js';
+import { h, bar, tag, button, uiCard, uiDisclosure, uiSubTabs, uiEmpty, uiKv, uiNote, uiInlineStat, uiInlineBar, uiPaperTiles, uiGoto, uiNum1, uiLevelTone, uiDeltaText } from '../dom.js';
+import { renderLabSpace } from './lab.js';
 import { UI_SUBTABS, UI_EMPTY, UI_WAGE_TIERS, UI_ACTION_LABELS, UI_GRAB, UI_CONSUMABLE_UNIT, UI_DEFER, UI_PAPER_SHOP, UI_PAPER_TILE, UI_RANK_HINT } from '../copy.js';
 
 /** 名单里标出「等老板拍板的延毕决定」（与弹层同一件事）。 */
@@ -204,6 +205,7 @@ function uiStudentCard(vm, s, ctx) {
       s.grudge ? tag('心结中', 'bad') : null,
       s.deferMonths > 0 ? tag('延毕 ' + s.deferMonths + ' 年', 'bad') : null,
     ]),
+    uiDisclosure('student-' + s.id, '能力、工资与论文 · 展开管理', [
     h('div', { class: 'student-bars' }, [
       h('div', { class: 'student-bar' }, [h('span', { class: 'student-bar-k', text: '幸福度 ' + s.happiness }), uiInlineBar(s.happiness, s.happinessTone === 'good' ? 'good' : (s.happinessTone === 'bad' ? 'bad' : 'warn'))]),
       h('div', { class: 'student-bar' }, [h('span', { class: 'student-bar-k', text: '毕业进度 ' + s.degreeProgress + '%' }), uiInlineBar(s.degreeProgress, 'info')]),
@@ -223,6 +225,7 @@ function uiStudentCard(vm, s, ctx) {
       ])
       : null,
     active ? uiGrabBlock(vm, s, ctx) : null,
+    ]),
   ]);
 }
 
@@ -287,35 +290,6 @@ function uiPaperShopCard(vm) {
   ]);
 }
 
-/* ── 仪器台 ── */
-function uiInstrumentsCard(vm) {
-  const lab = vm.crew.lab;
-  const items = lab.equipment;
-  const head = h('div', { class: 'slot-row' }, [
-    uiInlineStat('全仪器加成', lab.bonusPct + '%'),
-    uiInlineStat('每月维护', uiNum1(lab.maintain) + ' 万'),
-    uiInlineStat('持有仪器', items.reduce((n, e) => n + e.owned, 0) + ' 台'),
-  ]);
-  const grid = h('div', { class: 'equip-grid' }, items.map((e) => h('div', { class: 'equip tone-' + (e.down ? 'bad' : (e.tier === 'major' ? 'major' : 'minor')) }, [
-    h('div', { class: 'equip-head' }, [
-      h('strong', { class: 'equip-name', text: e.name }),
-      tag(e.tierLabel, e.tier === 'major' ? 'good' : 'mute'),
-      e.down ? tag('停机 ' + e.downMonths + ' 个月', 'bad') : null,
-    ]),
-    h('div', { class: 'equip-stats' }, [
-      uiInlineStat('持有', e.owned + ' / ' + e.holdCap),
-      uiInlineStat('加成', '+' + e.bonusPct + '% / 台'),
-      uiInlineStat('维护', uiNum1(e.maintain) + ' 万/月'),
-      uiInlineStat('购买价', uiNum1(e.price) + ' 万'),
-    ]),
-    h('div', { class: 'equip-buy' }, [
-      button('买一台 ' + uiNum1(e.price) + ' 万', { action: 'buy-equipment', id: e.id }, { class: 'btn-xs', disabled: !e.canBuy, title: e.reason || '' }),
-      e.reason ? h('span', { class: 'muted', text: e.reason }) : null,
-    ]),
-  ])));
-  return uiCard('仪器台', '仪器是项目承接门槛，也是科研效率乘区；买得越多，每月维护费越贵', null, [head, grid, uiNote('小幅仪器便宜好养，大幅仪器贵但加成高；停机当月不提供加成。')]);
-}
-
 /* ── 耗材库 ── */
 function uiConsumablesCard(vm) {
   const a = vm.actions;
@@ -362,13 +336,13 @@ function uiConsumablesCard(vm) {
 }
 
 /**
- * 课题组页：分栏 = 总览 / 学生名册 / 仪器台 / 耗材库。
+ * 课题组页：分栏 = 总览 / 学生名册 / 实验室（空间 + 仪器台）/ 耗材库。
  * 分栏切换只改 app.js 的本地 UI 状态；总览是默认落点，也是「我现在该做什么」的答案页。
  */
 export function renderCrew(vm, ctx) {
   const section = (ctx && ctx.labSection) || 'overview';
   const body = [uiSubTabs(UI_SUBTABS, section, 'lab-section')];
-  if (section === 'instruments') body.push(uiInstrumentsCard(vm));
+  if (section === 'instruments') body.push(renderLabSpace(vm, ctx));
   else if (section === 'consumables') body.push(uiConsumablesCard(vm));
   else if (section === 'students') {
     body.push(uiStudentsCard(vm, ctx));

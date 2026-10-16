@@ -14,7 +14,9 @@ import {
   CONSUME_MODES, INTEGRITY_DELTA, CONSUMABLE_PRICE_PER_UNIT, CONSUMABLE_BUY_PACK, CONSUMABLE_LOW_THRESHOLD, PLAYER_NAME_MAX_LENGTH,
 } from '../data/tuning.js';
 import { RANKS, rankOf, PROMOTE_INTEGRITY_BONUS, GOLDEN_AGE_MONEY_MUL, ELECTION_WINDOW_INTERVAL, TICKET_PER_T5, TICKET_PER_T6, TICKET_PER_PHD_GRADUATES, RECOMMEND_TICKET_REQ } from '../data/ranks.js';
-import { INSTRUMENTS, INSTRUMENT_MAP, INST_HOLD_CAP } from '../data/instruments.js';
+import { INSTRUMENTS, INSTRUMENT_MAP } from '../data/instruments.js';
+import { ROOMS, ROOM_MAX, BENCH_MAP, SELL_REFUND_RATE, LAB_TEXT } from '../data/lab.js';
+import { footprint, fits, findSpot, findBench, findItem, findEmptySlot, recountEquipment, newRoom } from './lab.js';
 import { PROJECTS, PROJECT_MAP, PROJECT_SLOTS, STUDENT_SLOTS, REFRESH_MONTHLY, LOCKABLE_SLOTS, TIER_LOOKAHEAD, PROJECT_OFFER_TTL_MONTHS, STUDENT_OFFER_TTL_MONTHS, MIN_ACCEPTABLE_PROJECT_OFFERS, NATION_PROJECT_RATIO, DEPOSIT_TO_CONSUMABLE, DEPOSIT_RATE, OVERDUE_GRACE_MONTHS, OVERDUE_INTEGRITY_PER_MONTH, OVERDUE_STUDENT_HAPPY, PROJECT_FAIL_INTEGRITY, PROJECT_FAIL_STUDENT_HAPPY } from '../data/projects.js';
 import { PAPER_PATTERNS, PAPER_TIER_ORDER, PAPER_PATTERN_ORDER, GRAB_FIRST_INTEGRITY, GRAB_FIRST_HAPPY, PAPER_BUY_PRICE, BUY_FIRST_INTEGRITY, GRAB_GRUDGE_MONTHS, MASTER_GRAD_PAPER, PHD_GRAD_PAPER, downgradeTier, PLAYER_AUTHOR_ID } from '../data/papers.js';
 import { HARDPOINT_METHODS, TEAM_MIN_STUDENTS, TEAM_MONEY, TEAM_STUDENT_HAPPY, TEAM_OTHER_PROJECT_MUL, FAKE_MONEY, FAKE_INTEGRITY, FAKE_STUDENT_HAPPY, FAKE_CAUGHT_INTEGRITY, FAKE_CAUGHT_PROGRESS_MUL, AUDIT_TRIGGER_FAKE_COUNT, AUDIT_MONTHLY_CHANCE, AUDIT_INTEGRITY, SOLO_MONEY, SOLO_STUDENT_HAPPY, SOLO_FAIL_HAPPY, MAX_PROJECTS_PER_STUDENT, PROJECT_MAX_STUDENTS, hardpointCount } from '../data/hardpoints.js';
@@ -49,7 +51,13 @@ export const ACTIONS = {
   buyConsumable: (payload = {}) => ({ type: 'game/buyConsumable', payload }),
   setWage: (payload) => ({ type: 'game/setWage', payload }),
   hireStudent: (payload) => ({ type: 'game/hireStudent', payload }),
-  buyEquipment: (payload) => ({ type: 'game/buyEquipment', payload }),
+  buyEquipment: (payload) => ({ type: 'game/buyEquipment', payload }),   // 1.1：= lab/buyInstrument（无坐标→自动找位）
+  buyRoom: (payload = {}) => ({ type: 'lab/buyRoom', payload }),
+  buyBench: (payload) => ({ type: 'lab/buyBench', payload }),
+  sellBench: (payload) => ({ type: 'lab/sellBench', payload }),
+  buyInstrument: (payload) => ({ type: 'lab/buyInstrument', payload }),
+  moveItem: (payload) => ({ type: 'lab/moveItem', payload }),
+  sellItem: (payload) => ({ type: 'lab/sellItem', payload }),
   acceptProject: (payload) => ({ type: 'game/acceptProject', payload }),
   lockOffer: (payload) => ({ type: 'game/lockOffer', payload }),
   assignStudent: (payload) => ({ type: 'game/assignStudent', payload }),
@@ -103,7 +111,13 @@ export function reduce(state, action) {
     case 'game/buyConsumable': return reduceBuyConsumable(state, action.payload || {});
     case 'game/setWage': return reduceSetWage(state, action.payload || {});
     case 'game/hireStudent': return reduceHireStudent(state, action.payload || {});
-    case 'game/buyEquipment': return reduceBuyEquipment(state, action.payload || {});
+    case 'game/buyEquipment':
+    case 'lab/buyInstrument': return reduceBuyInstrument(state, action.payload || {});
+    case 'lab/buyRoom': return reduceBuyRoom(state);
+    case 'lab/buyBench': return reduceBuyBench(state, action.payload || {});
+    case 'lab/sellBench': return reduceSellBench(state, action.payload || {});
+    case 'lab/moveItem': return reduceMoveItem(state, action.payload || {});
+    case 'lab/sellItem': return reduceSellItem(state, action.payload || {});
     case 'game/acceptProject': return reduceAcceptProject(state, action.payload || {});
     case 'game/lockOffer': return reduceLockOffer(state, action.payload || {});
     case 'game/assignStudent': return reduceAssign(state, action.payload || {}, true);
@@ -714,7 +728,10 @@ function refreshMarket(state, rng, log) {
   const ttlOf = (o) => (o.kind === 'student'
     ? (o.expiresMonthIndex || ((o.createdMonthIndex || 0) + STUDENT_OFFER_TTL_MONTHS))
     : (o.expiresMonthIndex || 0));
-  const alive = (o) => Boolean(o.locked) || ttlOf(o) === 0 || now <= ttlOf(o);
+  // 项目有效区间为 [created, expires)：TTL=3 不能在第 3 月继续占位，形成四个月周期。
+  // 学生沿用原到期口径；锁定项目仍不自动撤走。
+  const alive = (o) => Boolean(o.locked) || ttlOf(o) === 0
+    || (o.kind === 'project' ? now < ttlOf(o) : now <= ttlOf(o));
   let pool = state.market.pool.filter(alive);
   state.market.pool = pool;   // 让 createProjectOffer 里的 taken 判定看到最新池子
 
@@ -1063,28 +1080,155 @@ function reduceHireStudent(state, payload) {
   return next;
 }
 
-function reduceBuyEquipment(state, payload) {
+/* ── 1.1 实验室空间（LAB-SPACE §8）：买实验室 / 买放实验台 / 摆放·移动·出售仪器 ── */
+
+/** 明确坐标时校验；没给坐标时自动取第一个能放的位置。返回 {benchUid,x,y,rot} 或 {error}。 */
+function resolvePlacement(lab, instId, payload, ignoreUid) {
+  const hasXY = payload.benchUid !== undefined && payload.x !== undefined && payload.y !== undefined;
+  if (!hasXY) {
+    if (ignoreUid) return { error: LAB_TEXT.badSpot };
+    return findSpot(lab, instId) || { error: LAB_TEXT.full };
+  }
+  const loc = findBench(lab, payload.benchUid);
+  if (!loc) return { error: LAB_TEXT.badSpot };
+  const rot = Boolean(payload.rot);
+  const fp = footprint(instId, rot);
+  const x = Number(payload.x);
+  const y = Number(payload.y);
+  if (!fits(loc.bench, fp.w, fp.h, x, y, ignoreUid)) return { error: LAB_TEXT.badSpot };
+  return { benchUid: loc.bench.uid, x, y, rot };
+}
+
+function reduceBuyInstrument(state, payload) {
   const def = INSTRUMENT_MAP[payload.id];
   if (!def) return state;
-  const owned = state.lab.equipment[def.id] || 0;
   const next = cloneState(state);
-  if (owned >= INST_HOLD_CAP) {
-    next.ui.toast = def.name + '已经买满了（上限 ' + INST_HOLD_CAP + ' 台）。';
-    return next;
-  }
   if (state.player.rankIndex < def.tierGate) {
     next.ui.toast = '这个等级的仪器要头衔 ' + def.tierGate + ' 才能申购。';
     return next;
   }
-  const price = instrumentPrice(def.id, owned);
+  const price = instrumentPrice(def.id);
   if (next.player.money < price) {
     next.ui.toast = '经费不足，' + def.name + ' 报价 ' + price + ' 万。';
     return next;
   }
+  const spot = resolvePlacement(next.lab, def.id, payload, null);
+  if (spot.error) {
+    next.ui.toast = spot.error;
+    return next;
+  }
+  const loc = findBench(next.lab, spot.benchUid);
+  loc.bench.items.push({ uid: 'i' + next.lab.nextUid, inst: def.id, x: spot.x, y: spot.y, rot: spot.rot });
+  next.lab.nextUid += 1;
   next.player.money = round(next.player.money - price, 2);
-  next.lab.equipment[def.id] = owned + 1;
   next.lab.purchaseCount[def.id] = (next.lab.purchaseCount[def.id] || 0) + 1;
-  pushChronicle(next, { kind: 'lab', tone: 'good', text: '购入 ' + def.name + ' 一台（' + price + ' 万）。' });
+  recountEquipment(next.lab);
+  pushChronicle(next, { kind: 'lab', tone: 'good', text: loc.room.id + ' 新到一台' + def.name + '（' + price + ' 万）。' + (def.flavor || '') });
+  return next;
+}
+
+function reduceBuyRoom(state) {
+  const next = cloneState(state);
+  const idx = next.lab.rooms.length;
+  const def = ROOMS[idx];
+  if (idx >= ROOM_MAX || !def) {
+    next.ui.toast = LAB_TEXT.roomsMaxed;
+    return next;
+  }
+  if (next.player.rankIndex < def.rankGate) {
+    next.ui.toast = def.name + ' 要头衔 ' + def.rankGate + ' 才批得下来。';
+    return next;
+  }
+  if (next.player.money < def.price) {
+    next.ui.toast = '经费不足，' + def.name + ' 要 ' + def.price + ' 万。';
+    return next;
+  }
+  next.player.money = round(next.player.money - def.price, 2);
+  next.lab.rooms.push(newRoom(idx));
+  pushChronicle(next, { kind: 'lab', tone: 'good', text: '申请到新实验室 ' + def.name + '（' + def.price + ' 万）。' + def.flavor });
+  return next;
+}
+
+function reduceBuyBench(state, payload) {
+  const type = BENCH_MAP[payload.type] ? payload.type : 'bench_std';
+  const def = BENCH_MAP[type];
+  const next = cloneState(state);
+  let target;
+  if (payload.roomIdx !== undefined && payload.slot !== undefined) {
+    const roomIdx = Number(payload.roomIdx);
+    const room = next.lab.rooms[roomIdx];
+    const slot = Number(payload.slot);
+    if (!room || !Number.isInteger(slot) || slot < 0 || slot >= room.slots.length || room.slots[slot]) {
+      next.ui.toast = '这个台位不能放实验台（不存在或已占用）。';
+      return next;
+    }
+    target = { roomIdx, slot };
+  } else {
+    target = findEmptySlot(next.lab);
+    if (!target) {
+      next.ui.toast = LAB_TEXT.noSlot;
+      return next;
+    }
+  }
+  if (next.player.rankIndex < def.rankGate) {
+    next.ui.toast = def.name + '要头衔 ' + def.rankGate + ' 才能申购。';
+    return next;
+  }
+  if (next.player.money < def.price) {
+    next.ui.toast = '经费不足，' + def.name + ' 要 ' + def.price + ' 万。';
+    return next;
+  }
+  next.player.money = round(next.player.money - def.price, 2);
+  const bench = { uid: 'b' + next.lab.nextUid, type, items: [] };
+  next.lab.nextUid += 1;
+  next.lab.rooms[target.roomIdx].slots[target.slot] = bench;
+  pushChronicle(next, { kind: 'lab', tone: 'system', text: next.lab.rooms[target.roomIdx].id + ' 搬进一张' + def.name + '（' + def.price + ' 万）。' });
+  return next;
+}
+
+function reduceSellBench(state, payload) {
+  const loc = findBench(state.lab, payload.benchUid);
+  if (!loc) return state;
+  const next = cloneState(state);
+  if (loc.bench.items.length > 0) {
+    next.ui.toast = LAB_TEXT.benchNotEmpty;
+    return next;
+  }
+  const def = BENCH_MAP[loc.bench.type];
+  const refund = round(def.price * SELL_REFUND_RATE, 2);
+  next.lab.rooms[loc.roomIdx].slots[loc.slot] = null;
+  next.player.money = round(next.player.money + refund, 2);
+  pushChronicle(next, { kind: 'lab', tone: 'system', text: '拆掉一张' + def.name + '，回收 ' + refund + ' 万。' });
+  return next;
+}
+
+function reduceMoveItem(state, payload) {
+  const found = findItem(state.lab, payload.itemUid);
+  if (!found) return state;
+  const next = cloneState(state);
+  const spot = resolvePlacement(next.lab, found.item.inst, payload, found.item.uid);
+  if (spot.error) {
+    next.ui.toast = spot.error;
+    return next;
+  }
+  const from = findItem(next.lab, payload.itemUid);
+  from.bench.items = from.bench.items.filter((it) => it.uid !== from.item.uid);
+  const to = findBench(next.lab, spot.benchUid);
+  to.bench.items.push({ uid: from.item.uid, inst: from.item.inst, x: spot.x, y: spot.y, rot: spot.rot });
+  recountEquipment(next.lab);
+  return next;
+}
+
+function reduceSellItem(state, payload) {
+  if (!findItem(state.lab, payload.itemUid)) return state;
+  const next = cloneState(state);
+  const loc = findItem(next.lab, payload.itemUid);
+  const def = INSTRUMENT_MAP[loc.item.inst];
+  const refund = round(instrumentPrice(def.id) * SELL_REFUND_RATE, 2);
+  loc.bench.items = loc.bench.items.filter((it) => it.uid !== loc.item.uid);
+  next.player.money = round(next.player.money + refund, 2);
+  recountEquipment(next.lab);
+  pushChronicle(next, { kind: 'lab', tone: 'system', text: '把一台' + def.name + '转给了兄弟课题组，回收 ' + refund + ' 万。' });
   return next;
 }
 
