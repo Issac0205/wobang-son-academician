@@ -64,8 +64,7 @@ export function instrumentPrice(id, ownedCount) {
   return round(def.price * Math.pow(INST_PRICE_GROWTH, Math.max(0, Number(ownedCount) || 0)), 2);
 }
 
-/** 全实验室仪器加成（停机仪器按 TEMP_BROKEN_BONUS_MUL 折算），上限 INST_BONUS_CAP。 */
-export function equipmentBonus(lab) {
+function bonusRawSum(lab) {
   let sum = 0;
   for (const def of INSTRUMENTS) {
     const count = Number((lab.equipment && lab.equipment[def.id]) || 0);
@@ -73,7 +72,21 @@ export function equipmentBonus(lab) {
     const mul = isDown(lab, def.id) ? TEMP_BROKEN_BONUS_MUL : 1;
     sum += def.bonus * count * mul;
   }
-  return round(Math.min(sum, INST_BONUS_CAP), 4);
+  return sum;
+}
+
+/**
+ * 全实验室仪器加成的【未截断】总和。
+ * 界面必须同时拿到它与 equipmentBonus，才能说清「已经封顶」——
+ * 否则玩家买第 9 台仪器时加成不动，会以为新楼层/新仪器没被算进去。
+ */
+export function equipmentBonusSum(lab) {
+  return round(bonusRawSum(lab), 4);
+}
+
+/** 全实验室仪器加成（停机仪器按 TEMP_BROKEN_BONUS_MUL 折算），上限 INST_BONUS_CAP。 */
+export function equipmentBonus(lab) {
+  return round(Math.min(bonusRawSum(lab), INST_BONUS_CAP), 4);
 }
 
 /** 每月仪器维护费（停机的仪器不收费：坏了就不用校准）。 */

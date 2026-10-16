@@ -1,6 +1,6 @@
 {
   "name": "wobang-son-academician",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "private": true,
   "type": "module",
   "description": "我帮儿子评院士 —— 课题组经营养成小游戏（纯前端 ES Module，零构建依赖）",

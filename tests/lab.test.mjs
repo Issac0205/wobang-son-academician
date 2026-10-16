@@ -18,7 +18,7 @@ import { equipmentBonus, maintenanceTotal, instrumentPrice } from '../src/core/f
 import { INSTRUMENTS, INSTRUMENT_MAP } from '../src/data/instruments.js';
 import { PROJECT_MAP } from '../src/data/projects.js';
 import { ROOMS, BENCH_MAP, ROOM_MAX } from '../src/data/lab.js';
-import { selectLabSpace } from '../src/core/selectors.js';
+import { selectLabSpace, selectLab } from '../src/core/selectors.js';
 
 const mods = { createState, reduce, ACTIONS };
 const s = createSuite('实验室空间');
@@ -235,6 +235,33 @@ for (const defId of ['E5', 'E6', 'N7']) {
     '引擎拒绝买大型台时也不得出现「头衔 + 数字」', String(denied.ui.toast));
   s.ok(String(denied.ui.toast || '').includes(big.rankGateTitle) && String(denied.ui.toast || '').includes('副研究员'),
     '引擎拒绝时要写明「需要哪个头衔」和「你现在是什么头衔」', String(denied.ui.toast));
+}
+
+/* ── 10 加成封顶必须可见（用户反馈：新楼层买了新仪器加成不涨） ── */
+{
+  let st = freshGame(mods, 'lab-bonus-cap');
+  st.player.money = 5000;
+  st.player.rankIndex = 4;                       // 教授：所有仪器都过得了头衔门槛
+  for (const d of INSTRUMENTS) {
+    let guard = 0;
+    while ((st.lab.equipment[d.id] || 0) < 1 && guard < 6) {
+      guard += 1;
+      if (!findSpot(st.lab, d.id)) st = reduce(st, ACTIONS.buyBench({ type: 'bench_std' }));
+      const before = st.lab.equipment[d.id] || 0;
+      st = reduce(st, ACTIONS.buyInstrument({ id: d.id }));
+      if ((st.lab.equipment[d.id] || 0) === before) break;
+    }
+  }
+  const lab = selectLab(st);
+  s.ok(lab.bonusRawPct > lab.bonusCapPct,
+    '12 种仪器各一台的未截断加成超过上限（' + lab.bonusRawPct + '% > ' + lab.bonusCapPct + '%）');
+  s.eq(lab.bonusPct, lab.bonusCapPct, '因此实际加成被夹到上限 ' + lab.bonusCapPct + '%');
+  s.ok(lab.bonusCapped === true, '视图层标记 bonusCapped=true（界面必须显示「已封顶」）', String(lab.bonusCapped));
+  // 封顶后再添一台（改派生计数，等价于「又买到并摆上一台」；不依赖还有没有空台位）：加成不变
+  const st2 = { ...st, lab: { ...st.lab, equipment: { ...st.lab.equipment, bath: (st.lab.equipment.bath || 0) + 1 } } };
+  const lab2 = selectLab(st2);
+  s.eq(lab2.bonusPct, lab.bonusPct, '封顶后再添一台，实际加成确实不变（正是用户看到的现象）');
+  s.ok(lab2.bonusRawPct > lab.bonusRawPct, '但未截断的原始加成确实涨了（仪器被算进去了，只是被上限夹住）', lab.bonusRawPct + '% → ' + lab2.bonusRawPct + '%');
 }
 
 s.finish();

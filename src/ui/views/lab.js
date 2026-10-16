@@ -154,7 +154,7 @@ function uiShopCard(vm, pick) {
       ]),
       h('div', { class: 'shop-item-stats' }, [
         uiInlineStat('占格', e.w + '×' + e.h),
-        uiInlineStat('加成', '+' + e.bonusPct + '%'),
+        uiInlineStat('加成', lab.bonusCapped ? '+0%（已封顶）' : '+' + e.bonusPct + '%', lab.bonusCapped ? 'warn' : null),
         uiInlineStat('维护', uiNum1(e.maintain) + ' 万/月'),
       ]),
       e.flavor ? h('p', { class: 'shop-item-flavor', text: e.flavor }) : null,
@@ -173,7 +173,9 @@ function uiShopCard(vm, pick) {
   return uiCard(UI_LAB.shopTitle, UI_LAB.shopSub, null, [
     h('label', { class: 'catalog-select' }, [h('span', { text: '申购仪器 · 共 ' + lab.equipment.length + ' 种' }), select]),
     h('div', { class: 'shop-grid' }, rows),
-    uiNote('大幅仪器贵但加成高；停机当月不提供加成。仪器没有持有上限，唯一的限制是台面空间。'),
+    uiNote(lab.bonusCapped
+      ? '仪器加成已经封顶（上限 ' + lab.bonusCapPct + '%）：再买仪器不会提高科研加成，但它仍可能满足项目的「设备要求」；维护费照收。'
+      : '大幅仪器贵但加成高；停机当月不提供加成。仪器没有持有上限，唯一的限制是台面空间；全仪器加成上限 ' + lab.bonusCapPct + '%。'),
   ]);
 }
 
@@ -187,7 +189,7 @@ export function renderLabSpace(vm, ctx) {
     uiInlineStat('实验室', sum.rooms + ' / ' + sum.roomMax + ' 间'),
     uiInlineStat('实验台', sum.benches + ' 张 · 空台位 ' + sum.slotsFree),
     uiInlineStat('台面格子', sum.used + ' / ' + sum.cells, sum.free <= 1 ? 'warn' : null),
-    uiInlineStat('全仪器加成', lab.bonusPct + '%'),
+    uiInlineStat('全仪器加成', lab.bonusPct + '%' + (lab.bonusCapped ? '（已封顶）' : '（上限 ' + lab.bonusCapPct + '%）'), lab.bonusCapped ? 'warn' : null),
     uiInlineStat('每月维护', uiNum1(lab.maintain) + ' 万'),
   ]);
   const rooms = h('div', { class: 'rooms' }, space.rooms.map((r) => uiRoom(r, space, pick)).concat([uiNextRoom(space)]));

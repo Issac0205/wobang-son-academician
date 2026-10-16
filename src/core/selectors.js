@@ -5,7 +5,7 @@
  */
 
 import { RANKS, rankOf, MAX_RANK_INDEX } from '../data/ranks.js';
-import { INSTRUMENTS, INSTRUMENT_MAP } from '../data/instruments.js';
+import { INSTRUMENTS, INSTRUMENT_MAP, INST_BONUS_CAP } from '../data/instruments.js';
 import { ROOMS, ROOM_MAX, ROOM_SLOT_COLS, BENCHES, BENCH_MAP, SELL_REFUND_RATE, LAB_TEXT } from '../data/lab.js';
 import { findSpot, findEmptySlot, footprint, spaceSummary } from './lab.js';
 import { PROJECT_MAP, MARKET_SLOTS, PROJECT_SLOTS, STUDENT_SLOTS, REFRESH_MONTHLY, DEPOSIT_RATE } from '../data/projects.js';
@@ -16,7 +16,7 @@ import { ACTION_DEFS } from '../data/actions.js';
 import { HARDPOINT_METHODS, HARDPOINT_METHOD_ORDER, TEAM_MIN_STUDENTS, TEAM_MONEY, SOLO_MONEY, FAKE_MONEY, FAKE_INTEGRITY, MAX_PROJECTS_PER_STUDENT, PROJECT_MAX_STUDENTS } from '../data/hardpoints.js';
 import { CONSUME_MODE_ORDER, CONSUME_MODES, PHASE_LABELS, CONSUMABLE_BUY_PACK, CONSUMABLE_PRICE_PER_UNIT, CONSUMABLE_LOW_THRESHOLD, INTEGRITY_DELTA } from '../data/tuning.js';
 import {
-  rankStatus, equipmentBonus, maintenanceTotal, wageCost, instrumentPrice, projectProgressPct, openHardpointCount,
+  rankStatus, equipmentBonus, equipmentBonusSum, maintenanceTotal, wageCost, instrumentPrice, projectProgressPct, openHardpointCount,
   projectTail, energyMax, hireCost, expectedWageTier,
   teamSuccessChance, soloSuccessChance, fakeCatchChance, retryBonus, firstAuthorDrought,
 } from './formulas.js';
@@ -312,6 +312,10 @@ export function selectLabSpace(state) {
 export function selectLab(state) {
   return {
     bonusPct: Math.round(equipmentBonus(state.lab) * 100),
+    // 上限与「已封顶」必须给到界面：第 9 台起加成恒为 0，界面不说清就是误导（用户实测反馈）。
+    bonusCapPct: Math.round(INST_BONUS_CAP * 100),
+    bonusRawPct: Math.round(equipmentBonusSum(state.lab) * 100),
+    bonusCapped: equipmentBonusSum(state.lab) >= INST_BONUS_CAP,
     maintain: maintenanceTotal(state.lab),
     equipment: selectEquipment(state),
     space: selectLabSpace(state),
