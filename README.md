@@ -12,7 +12,9 @@
   1. **亲带**（「我亲自带」）：论文一作全是你的，代价是项目推进 ×0.85、每月多花 1 点精力；
   2. **买**：一作交易台花钱买署名，越厉害的刊物越贵，掉一点诚信；
   3. **抢**：抢学生的一作，快，但诚信 −8、该生幸福 −30、结下 6 个月心结。
-- **课题组经营**：8 台仪器（各有小幅/大幅加成）、耗材资金（1 单位 = 1 万元；三种消耗模式：随意挥霍 / 正常 / 收紧裤腰）、学生幸福度（低于 0 会转组，转组会把他在研项目的进度打回 40%）、延毕要你签字、抢一作按篇二次确认。
+- **实验室空间（v1.2 新增）**：仪器不再是点一下就到手——先得有地方放。实验室按「房间 × 台位」展开，实验台要花钱买（标准 8 格 4 万 / 大型 12 格 12 万），**仪器占格**（水浴锅、离心机 1×1；摇床、超净台、酶标仪、凝胶成像 2×1；液相、气相 2×2；质谱 3×2），放不下就是放不下。支持旋转、搬动、拆台卖设备；实验室最多 4 间，按头衔解锁。
+- **课题组经营**：12 台仪器（各有小幅/大幅加成；v1.2 新增 **AKTA 蛋白纯化 / 紫外分光光度计 / PCR 仪 / 凝胶成像**，并配了需要它们才能承接的项目）、耗材资金（1 单位 = 1 万元；三种消耗模式：随意挥霍 / 正常 / 收紧裤腰）、学生幸福度（低于 0 会转组，转组会把他在研项目的进度打回 40%）、**多带项目每月额外掉幸福度**（带 3 个 −2/月）、延毕要你签字、抢一作按篇二次确认。
+- **手机端（v1.2 重排）**：顶部只留关键资源、导航收成 5 项、学生与项目详情默认折叠、实验室按房间→台位逐层展开；仪器目录改成选择而不是长列表，**不依赖 hover 或拖拽**，触控目标 ≥44px。
 - **会输**：诚信归零 → 被举报；学生全散 → 实验室空；钱烧光 → 破产；健康归零 → 住院；也可以主动下海（结局记进纪事）。
 
 ## 三种入口
@@ -94,6 +96,7 @@ node 评院士/scripts/version.mjs        # 版本一览；--archive 归档 / --
 | [`docs/BALANCE.md`](docs/BALANCE.md) | 全部可调数值 + 平衡裁定记录（含「机器人读数非门禁」的决策） |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 分层与数据流 |
 | [`docs/CONTRACT.md`](docs/CONTRACT.md) | 模块边界与接口契约（冻结） |
+| [`docs/LAB-SPACE.md`](docs/LAB-SPACE.md) | 实验室空间系统设计（网格/占格/价格/旧档迁移，v1.2） |
 | [`docs/RESEARCH.md`](docs/RESEARCH.md) | 职称/经费/院士增选的真实资料锚点 |
 | [`docs/VERIFICATION.md`](docs/VERIFICATION.md) | 独立验证报告（两轮）与 verdict |
 | [`docs/DEV.md`](docs/DEV.md) | 非程序员也能照着做的开发/自检手册 |
@@ -102,11 +105,13 @@ node 评院士/scripts/version.mjs        # 版本一览；--archive 归档 / --
 
 ## 版本存档
 
+**当前发布：v1.2.0**（2026-10-16 上线）。已归档版本：v1.0.0 / v1.0.1 / v1.1.0 / v1.2.0。
+
 每个发布版本都在 `versions/vX.Y.Z/` 留档，里面是**可双击即玩的自包含单文件副本 + 一页说明 + `PROVENANCE.json` 溯源**（src 聚合哈希、单文件 SHA-256/字节数、check/simulate 退出码、验证 verdict）。约定与用法见 [`versions/README.md`](versions/README.md)；当前版本：[`versions/v1.0.0/`](versions/v1.0.0/)（直达单文件：`versions/v1.0.0/wobang-son-academician.html`）。
 
 ## 已知限制（如实）
 
-1. **在线入口与 Pages 工作流未经验证**：开发机的 hosts 把 `github.com` / `api.github.com` / `github.io` / `pages.github.com` 指向 `127.0.0.1`，本机推不上去、也跑不了 GitHub Actions。`.github/workflows/pages.yml` 只做了静态准备，**没有实跑过**；仓库里同时放了兜底页 `docs/index.html`（Pages 源选 main 分支 `/docs` 即可，不依赖 Actions）。推送步骤见 [`PUSH.md`](PUSH.md)。
+1. **在线入口已实测可用（2026-10-16 复核）**：本机 hosts 把 github 域名指向 `127.0.0.1`（Watt Toolkit 反代），git 需走系统证书库 —— `git -c http.sslBackend=schannel push` 配合 Windows 凭据管理器可正常推送；`main` 与 tag 均已上传成功，在线单文件已下载回来与本地 `docs/index.html` **SHA-256 完全一致**。**仍未验证的只有 `.github/workflows/pages.yml`**（Actions 在本机跑不了）——但仓库里放了兜底页 `docs/index.html`，Pages 源选 main 分支 `/docs` 即可，不依赖 Actions。推送步骤见 [`PUSH.md`](PUSH.md)。
 2. **平衡/通关率类读数是【信息性·非门禁】**：全部来自 AI 机器人，打法与真人不同；数值（含门槛与区间）待真人试玩后重定。依据见 `docs/BALANCE.md` §18.19。
 3. 市场「可接 offer 数」分支（构造态文案）只有实现者自身截图 + `ui-smoke` 覆盖，**没有独立浏览器复核**。
 4. 其余未闭合项与未验证项：见 `docs/VERIFICATION.md` 的 R11（含 GitHub Pages、真人试玩、机器人发薪策略等）。
