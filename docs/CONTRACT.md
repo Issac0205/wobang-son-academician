@@ -130,6 +130,9 @@ papers 是论文槽位模板 id 序列（见 1.5），例如 N2.papers = ['PB','
 ② 至少 MIN_ACCEPTABLE_PROJECT_OFFERS 个「按当前头衔与持有仪器真能承接」的项目 offer；
 ③ 至少 MIN_RECRUITABLE_STUDENT_OFFERS 个「按当前 IF 与头衔够得着」的候选人；
 ④ 非锁定 offer 一律按各自 TTL 到期撤走（locked=true 的不受 TTL 限制，仍占席位）。
+⑤ **稀有人才也不许破 ①**（v1.4.0）：5% 露面的彩蛋候选人**替位**入场 —— 学生席位满时先挤走一位
+   「够不着 / 最老」的普通候选人；池子已达 POOL_CAP 时本轮不再注入（宁可这次不出现，也不破容量）。
+   回归断言：tests/market.test.mjs 的 overStudent/overCap 计数 + tests/rare-talent.test.mjs 第 5 段。
 回归断言在 tests/market.test.mjs 与 scripts/simulate.mjs（「任何月份至少 1 个可承接 offer」）。
 
 ### 1.5 papers.js —— 期刊档位与论文槽位
@@ -179,6 +182,8 @@ PROJECT_STRESS_IDLE HAPPY_REGRESSION_THRESHOLD/SLOPE HAPPY_PROJECT_FINISH HAPPY_
 MULTI_PROJECT_HAPPY_PENALTY
 HAPPY_BREAKDOWN_DROP HAPPY_BREAKDOWN_TALK_COST LEAVE_* POACH_PROGRESS_MUL DEGREE_* DEFER_*
 GIVEUP_* DEGREE_KIND DEGREE_LABELS
+**RARE_TALENTS RARE_SPAWN_RATE ABILITY_MAX_RARE**（v1.4.0 稀有人才：8 人的名字/性别/所属池、
+每人每次该池刷新 5% 露面、天赋上限 120% —— 普通路径仍是 ABILITY_MIN..ABILITY_MAX）
 
 ### 1.8 market.js / actions.js / endings.js / events.js / names.js
 
@@ -205,8 +210,10 @@ GIVEUP_* DEGREE_KIND DEGREE_LABELS
   NAME_RETRY_MAX NAME_CHAR_DECAY NAME_DATA_TARGET
 
 > **字库状态（2026-10 复核，t38 同步）**：七项语料**全部 ≥ NAME_DATA_TARGET** ——
-> 实际 单字姓 192 / 复姓 20 / 双字名首 244 / 双字名末 264 / 单字名 204 / 黑名单 50 / 谐音 42
+> 实际 单字姓 192 / 复姓 20 / 双字名首 244 / 双字名末 264 / 单字名 204 / 黑名单 58 / 谐音 42
 > （目标 186 / 20 / 240 / 260 / 200 / 50 / 40，实测于 src/data/names.js）。
+> **黑名单 58 = 原本 50 + v1.4.0 的 8 位稀有人才名字**（彩蛋必须靠 RARE_TALENTS 独立注入，
+> 随机拼名不得拼出同名路人；目标值 50 是下限，超出不报错）。
 > scripts/check.mjs 第 9 项**直读 NAME_DATA_TARGET 逐键比对**，正常输出「[ok] 字库规模达标」、**0 警告**；
 > 扩表仍然只往数组里加条目、不动逻辑；若把某个数组删短，check 会重新报警告（而不是静默通过）。
 
@@ -227,7 +234,8 @@ GIVEUP_* DEGREE_KIND DEGREE_LABELS
       lab:{ equipment:{instrumentId:count}, equipmentDown:{instrumentId:monthsLeft},
             purchaseCount:{instrumentId:n}, holdCap:3, consumeMulThisMonth },
       students:[Student], projects:[Project],
-      market:{ pool:[Offer], refreshedMonthIndex, lockedOfferId|null, recruitedThisMonth },
+      market:{ pool:[Offer], refreshedMonthIndex, lockedOfferId|null, recruitedThisMonth,
+               rareHired:[name] },   // v1.4.0：本局已招走的稀有人才名字（刷新时跳过；旧档缺失默认 []）
       month:{ index, eventQueue:[eventId], pendingQueue:[{eventId,monthIndex,choiceId}],
               eventsResolved:[eventId], fakesThisMonth, leavesThisMonth, flags:{} },
       counters:{ nextStudentId, nextProjectId, nextOfferId, nextChronicleId, fakesTotal, auditsTotal,
@@ -256,7 +264,9 @@ GIVEUP_* DEGREE_KIND DEGREE_LABELS
                 ability, happiness, wageTier:'high'|'mid'|'low'|'none', studyMonthsLeft, degreeProgress,
                 projectIds:[projectInstanceId], monthsNoWage, monthsInLab, grudgeMonths, outputMulMonths,
                 outputMul, wageExpectShift, monthTalkCount, soloThisMonth, deferMonths, graduated, left,
-                enteredMonthIndex, note }
+                enteredMonthIndex, note, rare:boolean }
+    // rare（v1.4.0）：稀有人才标记。唯一的语义 = createStudent 允许 ability 落在 (ABILITY_MAX, ABILITY_MAX_RARE]；
+    // 事件效果 studentAbility 也按它取上限（否则 120% 会被夹回 95%）。普通学生一律 false。
 
     // soloThisMonth:Boolean —— 本月「单人猛干」标记：该生本月不产出项目进度，跑完一次月底结算即清掉
     //                        （engine.js settleProjects 读、settleStudents 清、resolveHardpoint 置 true）
@@ -277,7 +287,9 @@ GIVEUP_* DEGREE_KIND DEGREE_LABELS
     Offer（kind='project'）= { offerId, kind, tier, locked, createdMonthIndex, defId, category, money,
                               limitMonths, workload, require, expiresMonthIndex }
     Offer（kind='student'）= { offerId, kind, tier, locked, createdMonthIndex, name, gender, degree,
-                              source, ability, cost, reqIF, reqRank }
+                              source, ability, cost, reqIF, reqRank, rare:boolean }
+    // rare=true 的候选人只能由 data/students.js 的 RARE_TALENTS 注入（不参与随机拼名），
+    // 天赋恒为 ABILITY_MAX_RARE（1.2 = 120%）；招走时把 name 记进 market.rareHired（本局永不再现）。
 
     Receipt = { monthIndex, year, month, income:[{label,amount}], expense:[{label,amount}],
                 projects:[{instanceId,name,progressDelta,progressPct,status,starved}],

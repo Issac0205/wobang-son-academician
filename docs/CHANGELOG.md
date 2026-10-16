@@ -137,6 +137,48 @@ t16 存档白名单 / negativeMoneyMonths 持久化、t22 项目刷新与招生�
 
 ---
 
+## 1.4.0 — 稀有人才彩蛋（2026-10-17，主理人与用户确认的 SPEC）
+
+### 玩法
+- **8 位稀有人才（本局限定）**：保研池（`POOL_TRANSLATE_MONTHS` 6–10 月）刘垚 / 路遥 / 林孝义 / 罗傲；
+  考研池（`POOL_EXAM_MONTHS` 10–12 月）杨博宁 / 王雪茹 / 张慧云 / 叶展宏。数据住
+  `src/data/students.js` 的 `RARE_TALENTS`（名字 / 性别 / 池）。
+- **5% 露面**：`RARE_SPAWN_RATE = 0.05`，该池每次刷新时**每人各掷一次点**，按人独立判定。
+  掷点用「本月起始种子 ^ hash(名字:月份)」派生的独立随机源，**不消耗主随机流**：既保证「同种子 → 同结果」，
+  也保证「把某人标记成已招走」不会改变另外几个人这次中不中签。
+- **招走即本局永不再现**：`state.market.rareHired` 记名字（`createState` 初始化 `[]`；读档白名单只认这 8 个名字、
+  去重、非法类型丢弃；**旧档缺字段默认 `[]`**）；刷新时这些人直接跳过。
+- **天赋 120%**：新增 `ABILITY_MAX_RARE = 1.2`。`createStudent` 只在 `overrides.rare === true` 时按
+  `[ABILITY_MIN, 1.2]` 夹取；**其它路径（开局学生 / 随机候选人 / 事件增减）仍按 `[ABILITY_MIN, 0.95]`**，
+  没有放宽普通学生生成。招募（`reduceHireStudent`）把 `rare` 一起带进学生对象，否则会被夹回 95%。
+- **替位而不是加位**：学生席位满时挤走一位「够不着 / 最老」的普通候选人再入场 ——
+  市场容量不变式（`STUDENT_SLOTS = 3`、`POOL_CAP = 12`）一条都没放宽（`tests/market.test.mjs` 原断言照旧全绿）。
+- **可辨识**：人才卡片挂「★ 稀有人才」+ 专属 flavor + 铜金描边；招募走专属二次确认
+  （`rare-hire` → `rare-hire-confirm` / `rare-hire-cancel`），确认条写明「★ 本局只有这一次机会」；
+  课题组学生卡片挂同样的 ★，并在「科研能力」一栏直接显示 **120%**。
+- **防同名**：这 8 个名字进 `NAME_BLOCKLIST`（随机拼名避开），稀有人才只能由 `RARE_TALENTS` 独立注入；
+  `naming.generateName` 的兜底路径也补上了黑名单过滤。
+
+### 风险核查（规格第 4 条：1.2 会不会算出 NaN / 溢出）
+- `POACHABLE_ABILITY_MIN = 0.85`、`expectedWageTier` 的 0.80/0.55 阈值、`hireCost` 的线性式、
+  `recruitRequirement`、`degreePerMonth`、bots 的招人估价与月产出估算，全部是 ability 的线性/阈值函数，
+  上限饱和（工资期望恒为最高档），不按比例溢出。1.2 实测：保研池 `reqIF = 140`、考研池 `reqIF = 98`，
+  `cost` / `wageCost` 均为有限正数（`tests/rare-talent.test.mjs` 逐人断言 + 机器人路线 160 个月无 NaN）。
+- 唯一真正的风险点是 `engine.js` 的 `studentAbility` 事件效果（原来无条件夹到 `ABILITY_MAX`，
+  会把 120% 悄悄降成 95%）—— 已按 `st.rare` 分流取上限。
+
+### 测试与验收
+- 新增 `tests/rare-talent.test.mjs`（120 条断言，已挂进 `tests/run-all.mjs`）：固定种子「必出现 × 8 人 /
+  必不出现 / 池隔离」、招走后 60 个种子不再现、招走一人不影响另外三人、普通候选人 ≤ 95%、
+  容量不变式、旧档缺字段读档、脏数据清洗、防同名、机器人路线无 NaN。
+- `scripts/ui-smoke.mjs` 增补彩蛋冒烟段（DOM 级证据）：★ 标记 / 天赋 120% / 「本局只有这一次机会」二次确认 /
+  取消不招人 / 确认后 120% 落库 + 课题组卡片显示「科研能力 120%」。
+- 五条命令退出码全 0：`scripts/check.mjs`、`tests/run-all.mjs`、`scripts/ui-smoke.mjs`、
+  `scripts/build-single.mjs`、`scripts/asset-audit.mjs`。
+- `STATE_VERSION` 不变（= 3）：`market.rareHired` 是向后兼容的新增字段，旧档安全默认成 `[]`。
+
+---
+
 ## 契约变更记录
 
 > 本段只登记**契约文档本身的修正**（改 docs/CONTRACT.md / docs/ARCHITECTURE.md），不含玩法数值与代码变更；

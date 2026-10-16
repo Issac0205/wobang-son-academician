@@ -20,7 +20,7 @@ import { INSTRUMENTS } from '../data/instruments.js';
 import { startingLayout } from './lab.js';
 import {
   INITIAL_HAPPINESS, DEFAULT_WAGE_TIER, MASTER_STUDY_MONTHS, PHD_STUDY_MONTHS,
-  ABILITY_MIN, ABILITY_MAX, ABILITY_DEFAULT, INITIAL_STUDENT_ABILITY_MEAN_SD, INITIAL_STUDENT_TRANSLATE_RATE,
+  ABILITY_MIN, ABILITY_MAX, ABILITY_MAX_RARE, ABILITY_DEFAULT, INITIAL_STUDENT_ABILITY_MEAN_SD, INITIAL_STUDENT_TRANSLATE_RATE,
 } from '../data/students.js';
 import { DEPOSIT_RATE } from '../data/projects.js';
 import { createRng, clamp, round } from './rng.js';
@@ -35,13 +35,17 @@ export const STATE_VERSION = 3;
 /** 子对象/数组的工厂：只在 state.js 里出现一次，供 engine 与 save 复用。 */
 export function createStudent(overrides = {}) {
   const degree = overrides.degree === 'phd' ? 'phd' : 'master';
+  // v1.4.0 稀有人才：只有 overrides.rare === true 才把天赋上限放宽到 120%（ABILITY_MAX_RARE）；
+  // 其它所有路径（开局学生 / 随机候选人 / 事件增减）仍然夹在 ABILITY_MAX（95%）。
+  const rare = overrides.rare === true;
+  const abilityMax = rare ? ABILITY_MAX_RARE : ABILITY_MAX;
   return {
     id: overrides.id || 's0',
     name: overrides.name || '无名',
     gender: overrides.gender || 'male',
     degree,
     source: overrides.source === 'exam' ? 'exam' : 'translate',
-    ability: round(clamp(overrides.ability ?? ABILITY_DEFAULT, ABILITY_MIN, ABILITY_MAX), 3),
+    ability: round(clamp(overrides.ability ?? ABILITY_DEFAULT, ABILITY_MIN, abilityMax), 3),
     happiness: Math.round(clamp(overrides.happiness ?? INITIAL_HAPPINESS, 0, 100)),
     wageTier: overrides.wageTier || DEFAULT_WAGE_TIER,
     studyMonthsLeft: Math.round(overrides.studyMonthsLeft ?? (degree === 'phd' ? PHD_STUDY_MONTHS : MASTER_STUDY_MONTHS)),
@@ -60,6 +64,9 @@ export function createStudent(overrides = {}) {
     left: Boolean(overrides.left),
     enteredMonthIndex: Math.round(overrides.enteredMonthIndex ?? 0),
     note: overrides.note || '',
+    // v1.4.0 稀有人才标记：唯一能让 ability 落在 (ABILITY_MAX, ABILITY_MAX_RARE] 的开关，
+    // 读档靠它保住 120%（否则 createStudent 会把 1.2 夹回 0.95）。
+    rare,
   };
 }
 
@@ -119,6 +126,7 @@ export function createOffer(overrides = {}) {
       cost: Number(overrides.cost ?? 0),
       reqIF: Number(overrides.reqIF ?? 0),
       reqRank: Math.round(overrides.reqRank ?? 1),
+      rare: Boolean(overrides.rare),
     };
   }
   return {
@@ -202,7 +210,8 @@ export function createState(opts = {}) {
     students: [],
     projects: [],
 
-    market: { pool: [], refreshedMonthIndex: -1, lockedOfferId: null, recruitedThisMonth: 0 },
+    // rareHired（v1.4.0）：本局已经被招走的稀有人才名字 —— 招走即永不再现。
+    market: { pool: [], refreshedMonthIndex: -1, lockedOfferId: null, recruitedThisMonth: 0, rareHired: [] },
 
     month: {
       index: 0,

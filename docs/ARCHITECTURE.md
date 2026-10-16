@@ -76,6 +76,10 @@
    纯展示性的局部状态（当前分栏、纪事筛选、抢一作二次确认条、弹层开关）放在 src/ui/app.js 的 localUi 里，**不进 state**。
 7. 待决状态不加新字段：事件待决用 state.pendingEvent / month.pendingQueue；延毕待决由 studyMonthsLeft /
    degreeProgress / deferMonths 推导（engine.pendingDeferStudents）。这样读档后待决依然成立。
+8. `market.rareHired`（v1.4.0 稀有人才）是**只增不改的历史台账**：被招走的稀有人才名字进这里，
+   刷新时直接跳过（招走即本局永不再现）。它是向后兼容的可选字段 —— `createState` 初始化 `[]`、
+   hydrate 白名单默认 `[]`（只认 `RARE_TALENTS` 的 8 个名字）。`ability > ABILITY_MAX` 只有在
+   `Student.rare === true` 时才合法（120%），任何其它路径都必须夹在 `ABILITY_MAX`（95%）以内。
 
 ---
 

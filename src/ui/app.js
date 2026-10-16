@@ -68,6 +68,8 @@ export function createApp(options) {
     introDone: false,
     // 抢一作的二次确认（t8 finding）：只记「玩家正在确认哪一篇」，不写 state
     grabConfirm: null,
+    // v1.4.0 稀有人才：招走即永不再现，所以招募也要二次确认（只记「正在确认哪个 offer」，不写 state）
+    rareConfirm: null,
     // 首次进项目页的一次性引导（t34，DEV §7.4 第 5 条）：同样只存本地状态
     projectsIntroDone: false,
     // 1.1 实验室空间：手上拿着的仪器（{mode:'buy'|'move', id, uid, name, w, h, rot, price, refund}），只存本地
@@ -140,6 +142,16 @@ export function createApp(options) {
     'accept-project': (el) => dispatch('game/acceptProject', { offerId: el.dataset.offerId, studentIds: pickTeamStudents() }),
     'lock-offer': (el) => dispatch('game/lockOffer', { offerId: el.dataset.offerId }),
     'hire-student': (el) => dispatch('game/hireStudent', { offerId: el.dataset.offerId }),
+    // 稀有人才（v1.4.0）：第一次点击只展开确认条（写明「本局只有这一次机会」），确认后才真的 dispatch
+    'rare-hire': (el) => { localUi.rareConfirm = { offerId: el.dataset.offerId }; render(); },
+    'rare-hire-confirm': (el) => {
+      const pending = localUi.rareConfirm;
+      localUi.rareConfirm = null;
+      const offerId = (pending && pending.offerId) || (el && el.dataset ? el.dataset.offerId : '');
+      if (offerId) dispatch('game/hireStudent', { offerId });
+      render();
+    },
+    'rare-hire-cancel': () => { localUi.rareConfirm = null; render(); },
     'assign-student': (el) => dispatch('game/assignStudent', { projectId: el.dataset.projectId, studentId: el.dataset.studentId }),
     'unassign-student': (el) => dispatch('game/unassignStudent', { projectId: el.dataset.projectId, studentId: el.dataset.studentId }),
     'toggle-lead': (el) => dispatch('game/togglePlayerLead', { projectId: el.dataset.projectId }),
@@ -354,6 +366,7 @@ export function createApp(options) {
     localUi.labSection = 'overview';
     localUi.chronicleFilter = 'all';
     localUi.grabConfirm = null;
+    localUi.rareConfirm = null;
     localUi.labPick = null;
     lastVm = null;
     render();
@@ -365,6 +378,7 @@ export function createApp(options) {
     localUi.modal = null;
     localUi.hideEnding = false;
     localUi.grabConfirm = null;
+    localUi.rareConfirm = null;
     localUi.labPick = null;
     render();
     if (typeof io.onSave === 'function') io.onSave();

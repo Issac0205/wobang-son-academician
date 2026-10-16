@@ -693,6 +693,26 @@ degHappyCoef = happiness < 30 ? 0.50 : (0.6 + 0.004 × happiness)
 
 差异总结：保研生**能力均值高 0.22、招募成本约 3 倍、门槛约 1.4 倍**；考研生便宜、门槛低，但有 10% 概率抽到顶级黑马——直接对应 SPEC 的两条原话。
 
+### 7.1 稀有人才（v1.4.0 彩蛋）
+
+`[SPEC]` 硬性：8 位稀有人才各带 **120% 科研能力**；**保研池（6–10 月）**刘垚、路遥、林孝义、罗傲；
+**考研池（10–12 月）**杨博宁、王雪茹、张慧云、叶展宏。每人每次「该池刷新」时各 **5%** 概率出现（按人独立判定），
+**被招走即本局永不再现**（`state.market.rareHired` 记名字）。
+
+| 项 | 值 |
+|---|---|
+| 露面概率 | `RARE_SPAWN_RATE = 0.05`（每人每次该池刷新独立掷点；同种子必复现） |
+| 天赋 | `ABILITY_MAX_RARE = 1.2`（120%）；**普通学生上限仍是 `ABILITY_MAX = 0.95`**，普通生成没有放宽 |
+| 席位 | 不额外给席位：学生席位满时**替掉**一位「够不着 / 最老」的普通候选人 → `STUDENT_SLOTS`/`POOL_CAP` 不变式不动 |
+| 门槛/成本 | 照常走 `recruitRequirement` / `hireCost`（线性）：保研池 1.2 → `reqIF 140`；考研池 1.2 → `reqIF 98`；工资期望恒为最高档 |
+| 可辨识 | 卡片「★ 稀有人才」+ 专属 flavor；招募是二次确认，写明「★ 本局只有这一次机会」；入组后课题卡片显示「科研能力 120%」 |
+| 永不再现 | 招走时名字进 `rareHired`（刷新时跳过）；**只有被招走才锁定** —— 没招走而过期撤下的人，下个月仍可能再来 |
+| 防同名 | 这 8 个名字在 `NAME_BLOCKLIST` 里，随机拼名永远不会拼出他们；稀有人才只能由 `RARE_TALENTS` 独立注入 |
+
+> 10 月同时在 `POOL_TRANSLATE_MONTHS` 与 `POOL_EXAM_MONTHS` 里（两池交汇月），因此 10 月**两组都会掷点**；
+> 其余月份只有一组。回归证据：`tests/rare-talent.test.mjs`（固定种子必出现/必不出现）、
+> `scripts/ui-smoke.mjs` 的彩蛋段（★ 标记 / 120% / 二次确认）。
+
 ---
 
 ## 8. 行动系统
@@ -825,8 +845,8 @@ degHappyCoef = happiness < 30 ? 0.50 : (0.6 + 0.004 × happiness)
 | `src/data/instruments.js` | 8 种仪器 | `INSTRUMENTS`、`INST_PRICE_GROWTH`、`INST_HOLD_CAP` |
 | `src/data/projects.js` | 10 种项目模板 + 生成规则 | `PROJECTS`（含 W / lim / money / depositRate / consumable / papers / require / tier）、`MARKET_SLOTS`、`REFRESH_MONTHLY` |
 | `src/data/papers.js` | 期刊档位与论文槽位模板 | `JOURNAL_IF_BASE`、`PAPER_PATTERNS`（PA–PE）、`PAPER_BUY_PRICE` |
-| `src/data/students.js` | 学生参数 | `HAPPY_*`、`WAGE_*`、`DEGREE_BASE`、`ABILITY_*`、`DEFER_*`、`TRANSFER_PENALTY` |
-| `src/data/names.js` | 命名字库 | `SURNAMES_SINGLE`(192)、`SURNAMES_COMPOUND`(20)、`GIVEN_FIRST`(244)、`GIVEN_LAST`(264)、`GIVEN_SINGLE`(200)、`NAME_BLOCKLIST`(50)、`HOMOPHONE_BLOCK`(40) |
+| `src/data/students.js` | 学生参数 | `HAPPY_*`、`WAGE_*`、`DEGREE_BASE`、`ABILITY_*`、`DEFER_*`、`TRANSFER_PENALTY`、**`RARE_TALENTS` / `RARE_SPAWN_RATE` / `ABILITY_MAX_RARE`（v1.4.0 稀有人才）** |
+| `src/data/names.js` | 命名字库 | `SURNAMES_SINGLE`(192)、`SURNAMES_COMPOUND`(20)、`GIVEN_FIRST`(244)、`GIVEN_LAST`(264)、`GIVEN_SINGLE`(200)、`NAME_BLOCKLIST`(58 = 50 + 8 位稀有人才名字)、`HOMOPHONE_BLOCK`(40) |
 | `src/data/market.js` | 人才市场 | `MARKET_OPEN_MONTHS`、`POOL_CAP`、`RECRUIT_COST_*`、`REQ_IF_WEIGHT` |
 | `src/data/actions.js` | 4 种行动 | `ACTIONS`（含 energyCost / moneyCost / effects / limitPerMonth） |
 | `src/data/events.js` | 24 条随机事件 | `EVENTS`（cond / effects / text / weight） |

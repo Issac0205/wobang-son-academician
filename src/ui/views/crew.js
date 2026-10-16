@@ -199,6 +199,7 @@ function uiStudentCard(vm, s, ctx) {
   return h('div', { class: 'student tone-' + s.happinessTone, dataset: { role: 'student', id: s.id } }, [
     h('div', { class: 'student-head' }, [
       h('strong', { class: 'student-name', text: s.name }),
+      s.rare ? tag('★ 稀有人才', 'good') : null,
       tag(s.degreeLabel, 'info'),
       tag(s.sourceLabel, 'mute'),
       tag(s.statusLabel, s.statusLabel === '在读' ? 'good' : (s.statusLabel === '延毕中' ? 'warn' : 'mute')),

@@ -27,17 +27,25 @@ function uiPoolMonthsText(consts, source) {
   return '投放月份：' + months.join('、') + ' 月';
 }
 
-function uiCandidateCard(vm, o) {
+function uiCandidateCard(vm, o, ctx) {
   const consts = vm.consts || {};
   const expected = o.expectedWage || null;
   const wageText = expected ? (expected.label || expected.tier) : null;
-  return h('div', { class: 'candidate tone-' + (o.canHire ? 'good' : 'mute'), dataset: { role: 'candidate', id: o.offerId } }, [
+  // v1.4.0 稀有人才：可辨识（★ 标记 + 专属 flavor）+ 招募必须走「本局只有这一次机会」的二次确认。
+  const rare = o.rare === true;
+  const confirming = Boolean(rare && ctx && ctx.rareConfirm && ctx.rareConfirm.offerId === o.offerId);
+  return h('div', {
+    class: 'candidate' + (rare ? ' candidate-rare' : '') + ' tone-' + (o.canHire ? 'good' : 'mute'),
+    dataset: { role: 'candidate', id: o.offerId, rare: rare ? '1' : '0' },
+  }, [
     h('div', { class: 'candidate-head' }, [
       h('strong', { class: 'candidate-name', text: o.name }),
+      rare ? tag('★ 稀有人才', 'good') : null,
       tag(o.degreeLabel, 'info'),
       tag(o.sourceLabel, 'mute'),
       o.canHire ? null : tag('不符合门槛', 'warn'),
     ]),
+    rare ? h('p', { class: 'candidate-rare-flavor', text: '十年一遇的苗子：圈里已经传开了，别的组也在盯着——手慢就没了。' }) : null,
     h('div', { class: 'candidate-ability' }, [
       h('span', { class: 'candidate-ability-k', text: '天赋 ' + o.abilityPct + '%' }),
       bar(o.abilityPct, o.abilityPct >= 75 ? 'good' : (o.abilityPct >= 55 ? 'warn' : 'bad')),
@@ -49,13 +57,23 @@ function uiCandidateCard(vm, o) {
       uiKv('工资期望', wageText ? wageText : '能力越高越需要高工资'),
     ]),
     h('div', { class: 'candidate-actions' }, [
-      button('招进来', { action: 'hire-student', offerId: o.offerId }, { kind: 'primary', class: 'btn-xs', disabled: !o.canHire }),
+      rare
+        ? button('招进来', { action: 'rare-hire', offerId: o.offerId }, { kind: 'primary', class: 'btn-xs', disabled: !o.canHire })
+        : button('招进来', { action: 'hire-student', offerId: o.offerId }, { kind: 'primary', class: 'btn-xs', disabled: !o.canHire }),
       o.reason ? h('span', { class: 'muted', text: o.reason }) : null,
     ]),
+    confirming
+      ? h('div', { class: 'candidate-confirm is-confirm' }, [
+        h('strong', { class: 'candidate-confirm-title', text: '★ 本局只有这一次机会' }),
+        h('span', { class: 'candidate-confirm-text', text: '招走之后 ' + o.name + ' 本局不会再出现（科研能力 ' + o.abilityPct + '%，招进来就是 120%）。' }),
+        button('确认招进来', { action: 'rare-hire-confirm', offerId: o.offerId }, { kind: 'primary', class: 'btn-xs', disabled: !o.canHire }),
+        button('再想想', { action: 'rare-hire-cancel' }, { class: 'btn-ghost btn-xs' }),
+      ])
+      : null,
   ]);
 }
 
-function uiPoolCard(vm, source) {
+function uiPoolCard(vm, source, ctx) {
   const meta = UI_POOL_META[source] || UI_POOL_META.translate;
   const all = vm.market.students;
   const mine = all.filter((o) => o.source === source);
@@ -63,7 +81,7 @@ function uiPoolCard(vm, source) {
   const monthsText = uiPoolMonthsText(vm.consts, source);
   const subtitle = meta.subtitle + (monthsText ? ' · ' + monthsText : '');
   const body = [];
-  if (mine.length) body.push(h('div', { class: 'candidate-grid' }, mine.map((o) => uiCandidateCard(vm, o))));
+  if (mine.length) body.push(h('div', { class: 'candidate-grid' }, mine.map((o) => uiCandidateCard(vm, o, ctx))));
   else {
     body.push(uiEmpty(meta.empty + '（' + (vm.market.open ? '市场开着，但这个池子这个月没人' : vm.market.openText) + '）'));
     if (other.length) body.push(uiNote('这个月来投简历的是' + (source === 'exam' ? '保研生' : '考研生') + '池的人，切到另一个池子看。'));
@@ -87,6 +105,6 @@ function uiMarketStatusCard(vm) {
   ]);
 }
 
-export function renderMarket(vm) {
-  return [uiMarketStatusCard(vm), uiPoolCard(vm, 'translate'), uiPoolCard(vm, 'exam')];
+export function renderMarket(vm, ctx) {
+  return [uiMarketStatusCard(vm), uiPoolCard(vm, 'translate', ctx), uiPoolCard(vm, 'exam', ctx)];
 }

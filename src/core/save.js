@@ -12,6 +12,7 @@
 import { SAVE_SLOT_KEY, AUTOSAVE_ON_MONTH_END, CONSUME_MUL_SAVE_MIN, CONSUME_MUL_SAVE_MAX, CONSUME_MUL_DEFAULT } from '../data/tuning.js';
 import { STATE_VERSION, createState, createStudent, createProject, createOffer, createChronicleEntry } from './state.js';
 import { PAPER_TIER_ORDER, PLAYER_AUTHOR_ID } from '../data/papers.js';
+import { RARE_TALENTS } from '../data/students.js';
 import { clamp, round } from './rng.js';
 import { layoutFromCounts, sanitizeRooms, countEquipment, allBenches } from './lab.js';
 import { START_BENCHES } from '../data/lab.js';
@@ -20,6 +21,9 @@ import { INSTRUMENT_IDS, INSTRUMENT_MAP } from '../data/instruments.js';
 /** @typedef {{version:number, savedAt:number, state:any}} SaveEnvelope */
 
 export const SAVE_VERSION = STATE_VERSION;
+
+/** v1.4.0：稀有人才名字白名单（读档只认这 8 个名字，别的字符串一律丢弃）。 */
+const RARE_NAME_SET = new Set(RARE_TALENTS.map((t) => t.name));
 
 /** t16 F8：契约 §3.5 声称 save.js 也导出 STATE_VERSION，这里显式再导出（读档方要拿它比版本）。 */
 export { STATE_VERSION };
@@ -208,6 +212,11 @@ export function validateState(rawState) {
   base.market.refreshedMonthIndex = Math.round(num(mk.refreshedMonthIndex, -1, -1, 1e6));
   base.market.lockedOfferId = typeof mk.lockedOfferId === 'string' ? mk.lockedOfferId : null;
   base.market.recruitedThisMonth = Math.round(num(mk.recruitedThisMonth, 0, 0, 99));
+  // v1.4.0 稀有人才：旧档没有这个字段 → 默认空数组（宽容读档，绝不抛异常）；
+  // 只保留名字白名单里的条目并去重，其余（含非法类型）一律丢弃。
+  base.market.rareHired = Array.isArray(mk.rareHired)
+    ? [...new Set(mk.rareHired.filter((n) => typeof n === 'string' && RARE_NAME_SET.has(n)))]
+    : [];
 
   // 本月状态（t16 F1）：事件队列、已经结算过的事件、本月造假次数、月末标记。
   // 少了它们，读档会「把本月已经结算过的事件再触发一次」或者让审计计数回到 0。

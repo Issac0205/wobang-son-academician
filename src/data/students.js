@@ -23,6 +23,27 @@ export const ABILITY_EXAM_MEAN_SD = { mean: 0.53, sd: 0.10 };         // 考研�
 export const ABILITY_DARKHORSE_MEAN_SD = { mean: 0.85, sd: 0.05 };    // 考研生黑马 10%
 export const ABILITY_DARKHORSE_RATE = 0.10;
 
+/* ── 稀有人才彩蛋（v1.4.0） ──
+   口径（主理人与用户确认的 SPEC）：
+   · 保研池（market.js 的 POOL_TRANSLATE_MONTHS = 6–10 月）4 人；考研池（POOL_EXAM_MONTHS = 10–12 月）4 人。
+   · 每人每次「该池刷新」时**各自独立** 5% 概率出现（RARE_SPAWN_RATE）；被招走即本局永不再现
+     （state.market.rareHired 记名字）。
+   · 天赋 120%：只有稀有人才放宽到 ABILITY_MAX_RARE；普通学生（开局/随机候选人/事件）上限仍是
+     ABILITY_MAX = 0.95 —— 不得因为这个彩蛋放宽普通学生生成。
+   · 这 8 个名字必须避开随机拼名（已进 names.js 的 NAME_BLOCKLIST），只能由本表的 RARE_TALENTS 注入。 */
+export const RARE_SPAWN_RATE = 0.05;
+export const ABILITY_MAX_RARE = 1.2;
+export const RARE_TALENTS = [
+  { name: '刘垚', gender: 'male', pool: 'translate' },
+  { name: '路遥', gender: 'male', pool: 'translate' },
+  { name: '林孝义', gender: 'male', pool: 'translate' },
+  { name: '罗傲', gender: 'female', pool: 'translate' },
+  { name: '杨博宁', gender: 'male', pool: 'exam' },
+  { name: '王雪茹', gender: 'female', pool: 'exam' },
+  { name: '张慧云', gender: 'female', pool: 'exam' },
+  { name: '叶展宏', gender: 'male', pool: 'exam' },
+];
+
 /* ── 开局学生的能力分布（t16 F4：原来硬编码在 core/state.js 里） ──
    注意：开局学生与市场候选人用的是**两套**分布（开局学生更强），数值照原样搬移，未改动；
    是否需要统一由策划裁定（见 docs/BALANCE.md 的值不动，由 t13 处理）。 */

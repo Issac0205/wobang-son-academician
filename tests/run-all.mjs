@@ -9,7 +9,7 @@ import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const FILES = ['promotion.test.mjs', 'happiness.test.mjs', 'project.test.mjs', 'market.test.mjs', 'save.test.mjs', 'lab.test.mjs', 'balance.test.mjs', 'conservative.test.mjs'];
+const FILES = ['promotion.test.mjs', 'happiness.test.mjs', 'project.test.mjs', 'market.test.mjs', 'save.test.mjs', 'lab.test.mjs', 'balance.test.mjs', 'conservative.test.mjs', 'rare-talent.test.mjs'];
 
 let failed = 0;
 for (const file of FILES) {

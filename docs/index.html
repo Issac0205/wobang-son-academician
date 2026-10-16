@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 我帮儿子评院士 v1.3.0 · 单文件构建 · 2026-10-16T09:10:17.344Z · 源码：38 个模块（纯前端 ES Module，零构建依赖） -->
+<!-- 我帮儿子评院士 v1.4.0 · 单文件构建 · 2026-10-16T09:34:23.686Z · 源码：38 个模块（纯前端 ES Module，零构建依赖） -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
@@ -513,6 +513,14 @@ button { font: inherit; color: inherit; }
 .candidate-ability .bar { max-width: 260px; }
 .candidate-actions, .offer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .candidate .kv-grid-3, .student .kv-grid-3 { grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); }
+
+/* v1.4.0 稀有人才：卡片要一眼认得出来（铜金 + 印章红，全部复用现有令牌，不引新色） */
+.candidate-rare { border-left-color: var(--gold); background: linear-gradient(180deg, var(--gold-soft), transparent 68%); }
+.candidate-rare .candidate-name { color: var(--seal-deep); }
+.candidate-rare-flavor { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); color: var(--gold); }
+.candidate-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3); border: 1px dashed var(--seal); border-radius: var(--r-3); background: var(--seal-soft); }
+.candidate-confirm-title { color: var(--seal-deep); font-size: var(--fs-sm); }
+.candidate-confirm-text { font-size: var(--fs-sm); color: var(--ink-soft); }
 
 .offer-meta, .project-meta, .equip-stats { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); }
 .alumni { border-top: 1px dashed var(--line-strong); padding-top: var(--sp-3); }
@@ -1430,6 +1438,27 @@ const ABILITY_EXAM_MEAN_SD = { mean: 0.53, sd: 0.10 };         // 考研生主�
 const ABILITY_DARKHORSE_MEAN_SD = { mean: 0.85, sd: 0.05 };    // 考研生黑马 10%
 const ABILITY_DARKHORSE_RATE = 0.10;
 
+/* ── 稀有人才彩蛋（v1.4.0） ──
+   口径（主理人与用户确认的 SPEC）：
+   · 保研池（market.js 的 POOL_TRANSLATE_MONTHS = 6–10 月）4 人；考研池（POOL_EXAM_MONTHS = 10–12 月）4 人。
+   · 每人每次「该池刷新」时**各自独立** 5% 概率出现（RARE_SPAWN_RATE）；被招走即本局永不再现
+     （state.market.rareHired 记名字）。
+   · 天赋 120%：只有稀有人才放宽到 ABILITY_MAX_RARE；普通学生（开局/随机候选人/事件）上限仍是
+     ABILITY_MAX = 0.95 —— 不得因为这个彩蛋放宽普通学生生成。
+   · 这 8 个名字必须避开随机拼名（已进 names.js 的 NAME_BLOCKLIST），只能由本表的 RARE_TALENTS 注入。 */
+const RARE_SPAWN_RATE = 0.05;
+const ABILITY_MAX_RARE = 1.2;
+const RARE_TALENTS = [
+  { name: '刘垚', gender: 'male', pool: 'translate' },
+  { name: '路遥', gender: 'male', pool: 'translate' },
+  { name: '林孝义', gender: 'male', pool: 'translate' },
+  { name: '罗傲', gender: 'female', pool: 'translate' },
+  { name: '杨博宁', gender: 'male', pool: 'exam' },
+  { name: '王雪茹', gender: 'female', pool: 'exam' },
+  { name: '张慧云', gender: 'female', pool: 'exam' },
+  { name: '叶展宏', gender: 'male', pool: 'exam' },
+];
+
 /* ── 开局学生的能力分布（t16 F4：原来硬编码在 core/state.js 里） ──
    注意：开局学生与市场候选人用的是**两套**分布（开局学生更强），数值照原样搬移，未改动；
    是否需要统一由策划裁定（见 docs/BALANCE.md 的值不动，由 t13 处理）。 */
@@ -2036,6 +2065,9 @@ const NAME_BLOCKLIST = [
   '沙仁', '任一铭', '邵葆', '钱仁', '焦佩', '裴光', '毛蓉', '隋便', '谭天说', '汤嘉成',
   '毕云涛', '曹丝', '陈博', '董世长', '斐文', '葛辟', '胡丽晶', '姬从良', '蒋英宇', '柯基',
   '孔龙', '雷仁', '冷冰', '黎鸣', '林英', '鲁初雪', '陆仁甲', '马统', '莫言', '倪玛',
+  // v1.4.0 稀有人才彩蛋：这 8 个名字由 students.js 的 RARE_TALENTS 独立注入，
+  // 随机拼名必须避开它们（否则会拼出一个与彩蛋同名的路人）。
+  '刘垚', '路遥', '林孝义', '罗傲', '杨博宁', '王雪茹', '张慧云', '叶展宏',
 ];
 
 /* ── 谐音黑名单（连读与不雅词同音的拼音对；实现层比对 name.pinyin） ── */
@@ -2109,7 +2141,12 @@ function generateName(rng, opts = {}) {
     }
   }
   // 兜底：字库太小/黑名单太密时的保底路径（仍然是自然名，只是不保证唯一）
-  const fallback = pickSurname(rng) + pickGiven(rng, GIVEN_SINGLE, forcedGender || 'any');
+  // v1.4.0：兜底也必须过黑名单/同音表——否则稀有人才（已进 NAME_BLOCKLIST）可能在极端路径下
+  // 被随机拼出来，「防同名」的口径就漏了一个口子。
+  let fallback = pickSurname(rng) + pickGiven(rng, GIVEN_SINGLE, forcedGender || 'any');
+  for (let attempt = 0; attempt < NAME_RETRY_MAX && !isClean(fallback); attempt += 1) {
+    fallback = pickSurname(rng) + pickGiven(rng, GIVEN_SINGLE, forcedGender || 'any');
+  }
   return { name: fallback, gender: forcedGender || 'male' };
 }
 
@@ -2173,13 +2210,17 @@ const STATE_VERSION = 3;
 /** 子对象/数组的工厂：只在 state.js 里出现一次，供 engine 与 save 复用。 */
 function createStudent(overrides = {}) {
   const degree = overrides.degree === 'phd' ? 'phd' : 'master';
+  // v1.4.0 稀有人才：只有 overrides.rare === true 才把天赋上限放宽到 120%（ABILITY_MAX_RARE）；
+  // 其它所有路径（开局学生 / 随机候选人 / 事件增减）仍然夹在 ABILITY_MAX（95%）。
+  const rare = overrides.rare === true;
+  const abilityMax = rare ? ABILITY_MAX_RARE : ABILITY_MAX;
   return {
     id: overrides.id || 's0',
     name: overrides.name || '无名',
     gender: overrides.gender || 'male',
     degree,
     source: overrides.source === 'exam' ? 'exam' : 'translate',
-    ability: round(clamp(overrides.ability ?? ABILITY_DEFAULT, ABILITY_MIN, ABILITY_MAX), 3),
+    ability: round(clamp(overrides.ability ?? ABILITY_DEFAULT, ABILITY_MIN, abilityMax), 3),
     happiness: Math.round(clamp(overrides.happiness ?? INITIAL_HAPPINESS, 0, 100)),
     wageTier: overrides.wageTier || DEFAULT_WAGE_TIER,
     studyMonthsLeft: Math.round(overrides.studyMonthsLeft ?? (degree === 'phd' ? PHD_STUDY_MONTHS : MASTER_STUDY_MONTHS)),
@@ -2198,6 +2239,9 @@ function createStudent(overrides = {}) {
     left: Boolean(overrides.left),
     enteredMonthIndex: Math.round(overrides.enteredMonthIndex ?? 0),
     note: overrides.note || '',
+    // v1.4.0 稀有人才标记：唯一能让 ability 落在 (ABILITY_MAX, ABILITY_MAX_RARE] 的开关，
+    // 读档靠它保住 120%（否则 createStudent 会把 1.2 夹回 0.95）。
+    rare,
   };
 }
 
@@ -2257,6 +2301,7 @@ function createOffer(overrides = {}) {
       cost: Number(overrides.cost ?? 0),
       reqIF: Number(overrides.reqIF ?? 0),
       reqRank: Math.round(overrides.reqRank ?? 1),
+      rare: Boolean(overrides.rare),
     };
   }
   return {
@@ -2340,7 +2385,8 @@ function createState(opts = {}) {
     students: [],
     projects: [],
 
-    market: { pool: [], refreshedMonthIndex: -1, lockedOfferId: null, recruitedThisMonth: 0 },
+    // rareHired（v1.4.0）：本局已经被招走的稀有人才名字 —— 招走即永不再现。
+    market: { pool: [], refreshedMonthIndex: -1, lockedOfferId: null, recruitedThisMonth: 0, rareHired: [] },
 
     month: {
       index: 0,
@@ -4828,6 +4874,8 @@ function refreshMarket(state, rng, log) {
         }
         pool.push(createStudentOffer(state, rng));
       }
+      // ④ 稀有人才彩蛋（v1.4.0）：招生季里每人独立 5% 出现；招走即本局永不再现。
+      pool = injectRareTalents(state, pool, rng, log);
     }
   }
 
@@ -4901,24 +4949,38 @@ function createProjectOffer(state, rng, maxTier, forcedDefId) {
   return offer;
 }
 
-function createStudentOffer(state, rng) {
-  const translate = POOL_TRANSLATE_MONTHS.includes(state.calendar.month) && !POOL_EXAM_MONTHS.includes(state.calendar.month);
+function createStudentOffer(state, rng, rareTalent) {
+  // rareTalent（v1.4.0）：稀有人才走独立注入路径——不参与随机拼名、天赋恒为 ABILITY_MAX_RARE（120%）。
+  const rare = Boolean(rareTalent);
+  const translate = rare
+    ? rareTalent.pool === 'translate'
+    : (POOL_TRANSLATE_MONTHS.includes(state.calendar.month) && !POOL_EXAM_MONTHS.includes(state.calendar.month));
   const source = translate ? 'translate' : 'exam';
   const degree = rng.chance(STUDENT_DEGREE_MASTER_RATE) ? 'master' : 'phd';
   let ability;
-  if (source === 'translate') ability = rng.normal(ABILITY_TRANSLATE_MEAN_SD.mean, ABILITY_TRANSLATE_MEAN_SD.sd);
-  else {
-    ability = rng.chance(ABILITY_DARKHORSE_RATE)
-      ? rng.normal(ABILITY_DARKHORSE_MEAN_SD.mean, ABILITY_DARKHORSE_MEAN_SD.sd)
-      : rng.normal(ABILITY_EXAM_MEAN_SD.mean, ABILITY_EXAM_MEAN_SD.sd);
+  let name;
+  let gender;
+  if (rare) {
+    ability = ABILITY_MAX_RARE;
+    name = rareTalent.name;
+    gender = rareTalent.gender === 'female' ? 'female' : 'male';
+  } else {
+    if (source === 'translate') ability = rng.normal(ABILITY_TRANSLATE_MEAN_SD.mean, ABILITY_TRANSLATE_MEAN_SD.sd);
+    else {
+      ability = rng.chance(ABILITY_DARKHORSE_RATE)
+        ? rng.normal(ABILITY_DARKHORSE_MEAN_SD.mean, ABILITY_DARKHORSE_MEAN_SD.sd)
+        : rng.normal(ABILITY_EXAM_MEAN_SD.mean, ABILITY_EXAM_MEAN_SD.sd);
+    }
+    ability = round(clamp(ability, ABILITY_MIN, ABILITY_MAX), 3);
+    const picked = generateName(rng, { used: new Set(state.market.pool.filter((o) => o.kind === 'student').map((o) => o.name)) });
+    name = picked.name;
+    gender = picked.gender;
   }
-  ability = round(clamp(ability, ABILITY_MIN, ABILITY_MAX), 3);
-  const { name, gender } = generateName(rng, { used: new Set(state.market.pool.filter((o) => o.kind === 'student').map((o) => o.name)) });
   const req = recruitRequirement(ability, source);
   const offer = createOffer({
     offerId: 'o' + state.counters.nextOfferId,
     kind: 'student',
-    degree, source, ability, name, gender,
+    degree, source, ability, name, gender, rare,
     cost: hireCost(ability, source),
     reqIF: req.reqIF,
     reqRank: req.reqRank,
@@ -4926,6 +4988,47 @@ function createStudentOffer(state, rng) {
   });
   state.counters.nextOfferId += 1;
   return offer;
+}
+
+/** 稀有人才的「池 → 投放月份」表（月份口径来自 data/market.js，不在这里硬编码数字）。 */
+const RARE_POOL_MONTHS = { translate: POOL_TRANSLATE_MONTHS, exam: POOL_EXAM_MONTHS };
+
+/**
+ * 稀有人才彩蛋（v1.4.0）：招生季刷新时，按池逐人判定是否出现。
+ * · 只在该池的投放月份掷点（10 月同时在两张月份表里 → 两组都会掷，与 market.js 的口径一致）。
+ * · 每人一次独立 5% 掷点：掷点用的是「本月起始种子 ^ hash(名字:月份)」派生的独立随机源，
+ *   **不消耗主随机流**，因此既不会扰动既有「固定种子 → 固定结果」的基线，也保证每个人的判定
+ *   只取决于自己（把某人标记成「已招走」不会改变另外几个人这次中不中签）。
+ * · 本局已被招走的人（market.rareHired）永不再现；已经在池子里的不重复入场。
+ * · 学生席位满时替掉一位「够不着 / 最老」的普通候选人：席位不变式（STUDENT_SLOTS）与 POOL_CAP 都不放宽。
+ * @returns {any[]} 注入后的 pool（可能发生替换，调用方必须用返回值回写 state.market.pool）
+ */
+function injectRareTalents(state, pool, rng, log) {
+  const month = state.calendar.month;
+  const hired = Array.isArray(state.market.rareHired) ? state.market.rareHired : [];
+  const studentCount = () => pool.filter((o) => o.kind === 'student').length;
+  for (const talent of RARE_TALENTS) {
+    const months = RARE_POOL_MONTHS[talent.pool] || [];
+    if (!months.includes(month)) continue;
+    if (hired.includes(talent.name)) continue;
+    if (pool.some((o) => o.kind === 'student' && o.name === talent.name)) continue;
+    if (pool.length >= POOL_CAP) return pool;
+    // 每人一个只由「本月起始种子 + 月份 + 名字」决定的子随机源：这样「把某人标记为已招走」
+    // 不会改变另外几个人这次中不中签 —— 才是规格要求的「按人独立判定」。
+    const rollSeed = (Number(state.rng.seed) ^ hashString('rare-talent:' + talent.name + ':' + month)) >>> 0;
+    if (!createRng(rollSeed).chance(RARE_SPAWN_RATE)) continue;
+    if (studentCount() >= STUDENT_SLOTS) {
+      const ordinary = pool.filter((o) => o.kind === 'student' && !o.locked && o.rare !== true);
+      const byAge = (a, b) => (a.createdMonthIndex || 0) - (b.createdMonthIndex || 0);
+      const stale = ordinary.filter((o) => !recruitReachable(state, o)).sort(byAge)[0] || ordinary.sort(byAge)[0];
+      if (!stale) continue;   // 席位被锁定/稀有候选人占满：这一位这次进不来（下个月再掷）
+      pool = pool.filter((o) => o.offerId !== stale.offerId);
+      log('market', '普通候选人 ' + stale.name + ' 把位置让给了更抢手的人。', 'system');
+    }
+    pool.push(createStudentOffer(state, rng, talent));
+    log('market', '★ 稀有人才 ' + talent.name + ' 投了简历（本局只有这一次机会）。', 'good');
+  }
+  return pool;
 }
 
 /* ── 事件掷点 ── */
@@ -5089,9 +5192,18 @@ function reduceHireStudent(state, payload) {
     wageTier: payload.wageTier || 'mid',
     studyMonthsLeft: offer.degree === 'phd' ? 60 : 36,
     enteredMonthIndex: next.calendar.monthIndex,
+    // 稀有人才必须带 rare 进来，否则 createStudent 会把 1.2 夹回 ABILITY_MAX（0.95）。
+    rare: offer.rare === true,
   }));
   next.market.pool = next.market.pool.filter((o) => o.offerId !== offer.offerId);
-  pushChronicle(next, { kind: 'market', tone: 'good', text: offer.name + '（' + (offer.degree === 'phd' ? '博士' : '硕士') + '）加入了课题组。' });
+  // v1.4.0 稀有人才：招走即本局永不再现（名字进 rareHired，后续刷新直接跳过这个人）。
+  if (offer.rare === true) {
+    const hired = Array.isArray(next.market.rareHired) ? next.market.rareHired : [];
+    if (!hired.includes(offer.name)) next.market.rareHired = hired.concat([offer.name]);
+  }
+  pushChronicle(next, offer.rare === true
+    ? { kind: 'market', tone: 'good', text: '★ 稀有人才 ' + offer.name + '（' + (offer.degree === 'phd' ? '博士' : '硕士') + '）加入了课题组 —— 本局只有这一次机会。' }
+    : { kind: 'market', tone: 'good', text: offer.name + '（' + (offer.degree === 'phd' ? '博士' : '硕士') + '）加入了课题组。' });
   return next;
 }
 
@@ -5823,7 +5935,11 @@ function applyEffects(state, effects, ctx, rng, log) {
       }
       case 'studentAbility': {
         const targets = resolveStudentTargets(state, eff.target, ctx);
-        for (const st of targets) st.ability = round(clamp(st.ability + Number(eff.value || 0), ABILITY_MIN, ABILITY_MAX), 3);
+        for (const st of targets) {
+          // 稀有人才的天赋上限是 ABILITY_MAX_RARE（120%），普通学生仍是 ABILITY_MAX（95%）。
+          const abilityMax = st.rare === true ? ABILITY_MAX_RARE : ABILITY_MAX;
+          st.ability = round(clamp(st.ability + Number(eff.value || 0), ABILITY_MIN, abilityMax), 3);
+        }
         break;
       }
       case 'studentOutputMul': {
@@ -6139,9 +6255,13 @@ function createGame(opts = {}) {
 
 
 
+
 /** @typedef {{version:number, savedAt:number, state:any}} SaveEnvelope */
 
 const SAVE_VERSION = STATE_VERSION;
+
+/** v1.4.0：稀有人才名字白名单（读档只认这 8 个名字，别的字符串一律丢弃）。 */
+const RARE_NAME_SET = new Set(RARE_TALENTS.map((t) => t.name));
 
 /** t16 F8：契约 §3.5 声称 save.js 也导出 STATE_VERSION，这里显式再导出（读档方要拿它比版本）。 */
 
@@ -6330,6 +6450,11 @@ function validateState(rawState) {
   base.market.refreshedMonthIndex = Math.round(num(mk.refreshedMonthIndex, -1, -1, 1e6));
   base.market.lockedOfferId = typeof mk.lockedOfferId === 'string' ? mk.lockedOfferId : null;
   base.market.recruitedThisMonth = Math.round(num(mk.recruitedThisMonth, 0, 0, 99));
+  // v1.4.0 稀有人才：旧档没有这个字段 → 默认空数组（宽容读档，绝不抛异常）；
+  // 只保留名字白名单里的条目并去重，其余（含非法类型）一律丢弃。
+  base.market.rareHired = Array.isArray(mk.rareHired)
+    ? [...new Set(mk.rareHired.filter((n) => typeof n === 'string' && RARE_NAME_SET.has(n)))]
+    : [];
 
   // 本月状态（t16 F1）：事件队列、已经结算过的事件、本月造假次数、月末标记。
   // 少了它们，读档会「把本月已经结算过的事件再触发一次」或者让审计计数回到 0。
@@ -6671,6 +6796,7 @@ function selectStudentRow(state, st) {
     sourceLabel: st.source === 'exam' ? '考研' : '保研',
     ability: st.ability,
     abilityPct: Math.round(st.ability * 100),
+    rare: st.rare === true,
     happiness: st.happiness,
     happinessTone: st.happiness >= 70 ? 'good' : (st.happiness >= 40 ? 'normal' : 'bad'),
     wageTier: st.wageTier,
@@ -6972,6 +7098,7 @@ function selectMarket(state) {
       sourceLabel: o.source === 'exam' ? '考研' : '保研',
       ability: o.ability,
       abilityPct: Math.round(o.ability * 100),
+      rare: o.rare === true,
       cost: o.cost,
       reqIF: o.reqIF,
       reqRank: o.reqRank,
@@ -8566,6 +8693,7 @@ function uiStudentCard(vm, s, ctx) {
   return h('div', { class: 'student tone-' + s.happinessTone, dataset: { role: 'student', id: s.id } }, [
     h('div', { class: 'student-head' }, [
       h('strong', { class: 'student-name', text: s.name }),
+      s.rare ? tag('★ 稀有人才', 'good') : null,
       tag(s.degreeLabel, 'info'),
       tag(s.sourceLabel, 'mute'),
       tag(s.statusLabel, s.statusLabel === '在读' ? 'good' : (s.statusLabel === '延毕中' ? 'warn' : 'mute')),
@@ -9038,17 +9166,25 @@ function uiPoolMonthsText(consts, source) {
   return '投放月份：' + months.join('、') + ' 月';
 }
 
-function uiCandidateCard(vm, o) {
+function uiCandidateCard(vm, o, ctx) {
   const consts = vm.consts || {};
   const expected = o.expectedWage || null;
   const wageText = expected ? (expected.label || expected.tier) : null;
-  return h('div', { class: 'candidate tone-' + (o.canHire ? 'good' : 'mute'), dataset: { role: 'candidate', id: o.offerId } }, [
+  // v1.4.0 稀有人才：可辨识（★ 标记 + 专属 flavor）+ 招募必须走「本局只有这一次机会」的二次确认。
+  const rare = o.rare === true;
+  const confirming = Boolean(rare && ctx && ctx.rareConfirm && ctx.rareConfirm.offerId === o.offerId);
+  return h('div', {
+    class: 'candidate' + (rare ? ' candidate-rare' : '') + ' tone-' + (o.canHire ? 'good' : 'mute'),
+    dataset: { role: 'candidate', id: o.offerId, rare: rare ? '1' : '0' },
+  }, [
     h('div', { class: 'candidate-head' }, [
       h('strong', { class: 'candidate-name', text: o.name }),
+      rare ? tag('★ 稀有人才', 'good') : null,
       tag(o.degreeLabel, 'info'),
       tag(o.sourceLabel, 'mute'),
       o.canHire ? null : tag('不符合门槛', 'warn'),
     ]),
+    rare ? h('p', { class: 'candidate-rare-flavor', text: '十年一遇的苗子：圈里已经传开了，别的组也在盯着——手慢就没了。' }) : null,
     h('div', { class: 'candidate-ability' }, [
       h('span', { class: 'candidate-ability-k', text: '天赋 ' + o.abilityPct + '%' }),
       bar(o.abilityPct, o.abilityPct >= 75 ? 'good' : (o.abilityPct >= 55 ? 'warn' : 'bad')),
@@ -9060,13 +9196,23 @@ function uiCandidateCard(vm, o) {
       uiKv('工资期望', wageText ? wageText : '能力越高越需要高工资'),
     ]),
     h('div', { class: 'candidate-actions' }, [
-      button('招进来', { action: 'hire-student', offerId: o.offerId }, { kind: 'primary', class: 'btn-xs', disabled: !o.canHire }),
+      rare
+        ? button('招进来', { action: 'rare-hire', offerId: o.offerId }, { kind: 'primary', class: 'btn-xs', disabled: !o.canHire })
+        : button('招进来', { action: 'hire-student', offerId: o.offerId }, { kind: 'primary', class: 'btn-xs', disabled: !o.canHire }),
       o.reason ? h('span', { class: 'muted', text: o.reason }) : null,
     ]),
+    confirming
+      ? h('div', { class: 'candidate-confirm is-confirm' }, [
+        h('strong', { class: 'candidate-confirm-title', text: '★ 本局只有这一次机会' }),
+        h('span', { class: 'candidate-confirm-text', text: '招走之后 ' + o.name + ' 本局不会再出现（科研能力 ' + o.abilityPct + '%，招进来就是 120%）。' }),
+        button('确认招进来', { action: 'rare-hire-confirm', offerId: o.offerId }, { kind: 'primary', class: 'btn-xs', disabled: !o.canHire }),
+        button('再想想', { action: 'rare-hire-cancel' }, { class: 'btn-ghost btn-xs' }),
+      ])
+      : null,
   ]);
 }
 
-function uiPoolCard(vm, source) {
+function uiPoolCard(vm, source, ctx) {
   const meta = UI_POOL_META[source] || UI_POOL_META.translate;
   const all = vm.market.students;
   const mine = all.filter((o) => o.source === source);
@@ -9074,7 +9220,7 @@ function uiPoolCard(vm, source) {
   const monthsText = uiPoolMonthsText(vm.consts, source);
   const subtitle = meta.subtitle + (monthsText ? ' · ' + monthsText : '');
   const body = [];
-  if (mine.length) body.push(h('div', { class: 'candidate-grid' }, mine.map((o) => uiCandidateCard(vm, o))));
+  if (mine.length) body.push(h('div', { class: 'candidate-grid' }, mine.map((o) => uiCandidateCard(vm, o, ctx))));
   else {
     body.push(uiEmpty(meta.empty + '（' + (vm.market.open ? '市场开着，但这个池子这个月没人' : vm.market.openText) + '）'));
     if (other.length) body.push(uiNote('这个月来投简历的是' + (source === 'exam' ? '保研生' : '考研生') + '池的人，切到另一个池子看。'));
@@ -9098,8 +9244,8 @@ function uiMarketStatusCard(vm) {
   ]);
 }
 
-function renderMarket(vm) {
-  return [uiMarketStatusCard(vm), uiPoolCard(vm, 'translate'), uiPoolCard(vm, 'exam')];
+function renderMarket(vm, ctx) {
+  return [uiMarketStatusCard(vm), uiPoolCard(vm, 'translate', ctx), uiPoolCard(vm, 'exam', ctx)];
 }
 
 /* ── src/ui/views/actions.js ── */
@@ -9758,6 +9904,8 @@ function createApp(options) {
     introDone: false,
     // 抢一作的二次确认（t8 finding）：只记「玩家正在确认哪一篇」，不写 state
     grabConfirm: null,
+    // v1.4.0 稀有人才：招走即永不再现，所以招募也要二次确认（只记「正在确认哪个 offer」，不写 state）
+    rareConfirm: null,
     // 首次进项目页的一次性引导（t34，DEV §7.4 第 5 条）：同样只存本地状态
     projectsIntroDone: false,
     // 1.1 实验室空间：手上拿着的仪器（{mode:'buy'|'move', id, uid, name, w, h, rot, price, refund}），只存本地
@@ -9830,6 +9978,16 @@ function createApp(options) {
     'accept-project': (el) => dispatch('game/acceptProject', { offerId: el.dataset.offerId, studentIds: pickTeamStudents() }),
     'lock-offer': (el) => dispatch('game/lockOffer', { offerId: el.dataset.offerId }),
     'hire-student': (el) => dispatch('game/hireStudent', { offerId: el.dataset.offerId }),
+    // 稀有人才（v1.4.0）：第一次点击只展开确认条（写明「本局只有这一次机会」），确认后才真的 dispatch
+    'rare-hire': (el) => { localUi.rareConfirm = { offerId: el.dataset.offerId }; render(); },
+    'rare-hire-confirm': (el) => {
+      const pending = localUi.rareConfirm;
+      localUi.rareConfirm = null;
+      const offerId = (pending && pending.offerId) || (el && el.dataset ? el.dataset.offerId : '');
+      if (offerId) dispatch('game/hireStudent', { offerId });
+      render();
+    },
+    'rare-hire-cancel': () => { localUi.rareConfirm = null; render(); },
     'assign-student': (el) => dispatch('game/assignStudent', { projectId: el.dataset.projectId, studentId: el.dataset.studentId }),
     'unassign-student': (el) => dispatch('game/unassignStudent', { projectId: el.dataset.projectId, studentId: el.dataset.studentId }),
     'toggle-lead': (el) => dispatch('game/togglePlayerLead', { projectId: el.dataset.projectId }),
@@ -10044,6 +10202,7 @@ function createApp(options) {
     localUi.labSection = 'overview';
     localUi.chronicleFilter = 'all';
     localUi.grabConfirm = null;
+    localUi.rareConfirm = null;
     localUi.labPick = null;
     lastVm = null;
     render();
@@ -10055,6 +10214,7 @@ function createApp(options) {
     localUi.modal = null;
     localUi.hideEnding = false;
     localUi.grabConfirm = null;
+    localUi.rareConfirm = null;
     localUi.labPick = null;
     render();
     if (typeof io.onSave === 'function') io.onSave();

@@ -394,6 +394,67 @@ try {
     check(hireDisabled > 0 || (marketText.indexOf('门槛') >= 0 && marketText.indexOf('招募成本') >= 0),
       '候选人的门槛与禁用原因可见（当前 ' + hireDisabled + ' 个不满足门槛被禁用）', '招募按钮既没有禁用态也没有门槛说明');
 
+    /* ── 11.5 v1.4.0 稀有人才彩蛋：★ 标记 / 天赋 120% / 「本局只有这一次机会」二次确认 ──
+     * 这一段会临时把 state 换成「市场上挂着一个稀有人才」的样子，跑完立刻还原（后面的段落不受影响）。 */
+    {
+      const keep = clone(store.getState());
+      const stRare = clone(store.getState());
+      stRare.player.money = 99999;
+      stRare.player.totalIF = 99999;
+      stRare.player.rankIndex = 8;
+      stRare.market.recruitedThisMonth = 0;
+      stRare.market.rareHired = [];
+      stRare.market.pool = stRare.market.pool.filter((o) => o.kind !== 'student');
+      stRare.market.pool.push({
+        offerId: 'oRareUi', kind: 'student', name: '刘垚', gender: 'male', degree: 'master', source: 'translate',
+        ability: 1.2, cost: 1, reqIF: 0, reqRank: 1, rare: true, locked: false, tier: 1,
+        createdMonthIndex: stRare.calendar.monthIndex,
+      });
+      replaceState(stRare);
+      $('tab-market').click();
+      let rareCard = null;
+      walk($('panel-market'), (n) => { if (!rareCard && n.dataset && n.dataset.role === 'candidate' && n.dataset.rare === '1') rareCard = n; });
+      check(Boolean(rareCard), '稀有人才卡片带 data-rare=1（UI 能一眼认出彩蛋候选人）', '市场里找不到稀有人才卡片');
+      const rareCardText = rareCard ? textOf(rareCard) : '';
+      check(rareCardText.indexOf('★ 稀有人才') >= 0, '人才卡片挂「★ 稀有人才」标记', '卡片上没有 ★ 稀有人才：' + rareCardText.slice(0, 60));
+      check(rareCardText.indexOf('120%') >= 0, '人才卡片显示天赋 120%', '卡片上没有 120%：' + rareCardText.slice(0, 60));
+      const rareBtn = findByAction($('panel-market'), 'rare-hire');
+      check(Boolean(rareBtn), '稀有人才的招募按钮走专属动作 rare-hire（不直接执行）', '没有渲染稀有候选人的招募按钮');
+      const studentsBefore = store.getState().students.length;
+      if (rareBtn) {
+        rareBtn.click();
+        const strips = $('panel-market').querySelectorAll('.is-confirm');
+        const stripText = strips.length ? String(strips[0].textContent) : '';
+        check(strips.length === 1, '点「招进来」先展开二次确认（不直接执行）', '没有二次确认：' + stripText.slice(0, 60));
+        check(stripText.indexOf('本局只有这一次机会') >= 0, '确认条写明「本局只有这一次机会」', '确认条缺「本局只有这一次机会」：' + stripText.slice(0, 70));
+        check(store.getState().students.length === studentsBefore, '确认之前不会真的招人', '还没确认就把人招进来了');
+        const cancelRare = findByAction($('panel-market'), 'rare-hire-cancel');
+        if (cancelRare) {
+          cancelRare.click();
+          check($('panel-market').querySelectorAll('.is-confirm').length === 0, '「再想想」能撤掉确认条（也没招人）', '取消后确认条还在');
+        } else fail('确认条缺少「再想想」按钮');
+        const rareBtn2 = findByAction($('panel-market'), 'rare-hire');
+        if (rareBtn2) rareBtn2.click();
+        const rareConfirm = findByAction($('panel-market'), 'rare-hire-confirm');
+        check(Boolean(rareConfirm), '确认条提供「确认招进来」按钮', '确认条缺少确认按钮');
+        if (rareConfirm) {
+          rareConfirm.click();
+          const gotten = store.getState().students.filter((x) => x.name === '刘垚')[0];
+          check(Boolean(gotten) && gotten.ability === 1.2 && gotten.rare === true,
+            '确认后招进来的稀有人才天赋仍是 120%（带 rare 标记）', gotten ? String(gotten.ability) : '没招进来');
+          check(store.getState().market.rareHired.indexOf('刘垚') >= 0, '招走后写进 market.rareHired（本局永不再现）', 'rareHired 没记上');
+          $('tab-lab').click();
+          const studentsSection = findAllByAction($('app'), 'lab-section').filter((n) => n.dataset.section === 'students')[0];
+          if (studentsSection) studentsSection.click();
+          const labRare = panelText('panel-lab');
+          check(labRare.indexOf('科研能力 120%') >= 0, '课题组学生卡片显示「科研能力 120%」', '课题组卡片没有 120%');
+          check(labRare.indexOf('★ 稀有人才') >= 0, '课题组学生卡片同样挂「★ 稀有人才」', '课题组卡片没有 ★ 稀有人才');
+        }
+      }
+      replaceState(keep);
+      $('tab-market').click();
+    }
+
     /* ── 12 设备 / 耗材模式 / 工资档 ── */
     $('tab-lab').click();
     const sub = (section) => findAllByAction($('app'), 'lab-section').filter((n) => n.dataset.section === section)[0];

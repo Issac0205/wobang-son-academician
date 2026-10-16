@@ -43,7 +43,12 @@ export function generateName(rng, opts = {}) {
     }
   }
   // 兜底：字库太小/黑名单太密时的保底路径（仍然是自然名，只是不保证唯一）
-  const fallback = pickSurname(rng) + pickGiven(rng, GIVEN_SINGLE, forcedGender || 'any');
+  // v1.4.0：兜底也必须过黑名单/同音表——否则稀有人才（已进 NAME_BLOCKLIST）可能在极端路径下
+  // 被随机拼出来，「防同名」的口径就漏了一个口子。
+  let fallback = pickSurname(rng) + pickGiven(rng, GIVEN_SINGLE, forcedGender || 'any');
+  for (let attempt = 0; attempt < NAME_RETRY_MAX && !isClean(fallback); attempt += 1) {
+    fallback = pickSurname(rng) + pickGiven(rng, GIVEN_SINGLE, forcedGender || 'any');
+  }
   return { name: fallback, gender: forcedGender || 'male' };
 }
 

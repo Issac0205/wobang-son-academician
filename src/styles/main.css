@@ -504,6 +504,14 @@ button { font: inherit; color: inherit; }
 .candidate-actions, .offer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
 .candidate .kv-grid-3, .student .kv-grid-3 { grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); }
 
+/* v1.4.0 稀有人才：卡片要一眼认得出来（铜金 + 印章红，全部复用现有令牌，不引新色） */
+.candidate-rare { border-left-color: var(--gold); background: linear-gradient(180deg, var(--gold-soft), transparent 68%); }
+.candidate-rare .candidate-name { color: var(--seal-deep); }
+.candidate-rare-flavor { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); color: var(--gold); }
+.candidate-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3); border: 1px dashed var(--seal); border-radius: var(--r-3); background: var(--seal-soft); }
+.candidate-confirm-title { color: var(--seal-deep); font-size: var(--fs-sm); }
+.candidate-confirm-text { font-size: var(--fs-sm); color: var(--ink-soft); }
+
 .offer-meta, .project-meta, .equip-stats { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); }
 .alumni { border-top: 1px dashed var(--line-strong); padding-top: var(--sp-3); }
 .alumni-title { font-size: var(--fs-sm); color: var(--ink-soft); letter-spacing: 0.08em; margin-bottom: var(--sp-1); }
