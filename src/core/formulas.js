@@ -10,7 +10,7 @@ import {
   ENERGY_MAX_BASE, ENERGY_PER_HEALTH_10, ENERGY_LOW_HEALTH_THRESHOLD, ENERGY_LOW_HEALTH_MUL,
   CONSUME_MODES,
 } from '../data/tuning.js';
-import { INSTRUMENTS, INSTRUMENT_MAP, INST_PRICE_GROWTH, INST_BONUS_CAP, TEMP_BROKEN_BONUS_MUL } from '../data/instruments.js';
+import { INSTRUMENTS, INSTRUMENT_MAP, INST_PRICE_GROWTH, TEMP_BROKEN_BONUS_MUL } from '../data/instruments.js';
 import { PROJECT_MAP, PER_HARDPOINT_TAIL_MUL, UNDERDUE_TAIL_MUL } from '../data/projects.js';
 import {
   RECRUIT_COST, REQ_IF_WEIGHT, REQ_RANK_CAP, REQ_IF_BASE_ABILITY, REQ_RANK_PER_IF,
@@ -75,18 +75,20 @@ function bonusRawSum(lab) {
   return sum;
 }
 
-/**
- * 全实验室仪器加成的【未截断】总和。
- * 界面必须同时拿到它与 equipmentBonus，才能说清「已经封顶」——
- * 否则玩家买第 9 台仪器时加成不动，会以为新楼层/新仪器没被算进去。
- */
+/** 全实验室仪器加成的总和（停机仪器按 TEMP_BROKEN_BONUS_MUL 折算）。
+ *  1.3 起不再封顶，因此它与 equipmentBonus 恒等；保留导出只为旧调用方的接口不变。
+ *  口径：只统计**摆在台面上**的仪器（lab.equipment 是摆放的派生计数），仓库里的不算。 */
 export function equipmentBonusSum(lab) {
   return round(bonusRawSum(lab), 4);
 }
 
-/** 全实验室仪器加成（停机仪器按 TEMP_BROKEN_BONUS_MUL 折算），上限 INST_BONUS_CAP。 */
+/**
+ * 全实验室仪器加成（停机仪器按 TEMP_BROKEN_BONUS_MUL 折算）。
+ * 1.3：取消 INST_BONUS_CAP —— 直接返回全部仪器加成之和，不再截断。
+ * 口径：只统计摆在台面上的仪器；仓库里的仪器不提供加成（见 core/lab.js 的 countEquipment）。
+ */
 export function equipmentBonus(lab) {
-  return round(Math.min(bonusRawSum(lab), INST_BONUS_CAP), 4);
+  return round(bonusRawSum(lab), 4);
 }
 
 /** 每月仪器维护费（停机的仪器不收费：坏了就不用校准）。 */

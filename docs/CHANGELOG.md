@@ -117,6 +117,26 @@ t16 存档白名单 / negativeMoneyMonths 持久化、t22 项目刷新与招生�
 
 ---
 
+## 1.3.0 — 仪器加成不封顶 + 仓库（2026-10-17，用户反馈）
+
+### 玩法
+- **仪器加成不再封顶**：删除 `src/data/instruments.js` 的 `INST_BONUS_CAP`（原 0.90）与全部引用；
+  `core/formulas.js` 的 `equipmentBonus` 直接返回全部仪器加成之和（`equipmentBonusSum` 保留为同值别名）；
+  `core/selectors.js` 删除 `bonusCapPct` / `bonusCapped`；UI 撤销「（已封顶）」「（上限 90%）」等文案。
+  实测：12 种仪器各一台 = **+123%**（旧实现显示 90%），再添一台水浴锅 = **+129%**。
+- **仓库（storage）**：`lab.storage = [{ uid, inst }]`，uid 沿用该仪器采购时从 `lab.nextUid` 分配的流水号。
+  新增 action `lab/storeItem {itemUid}` / `lab/deployItem {storageUid, benchUid?, x?, y?, rot?}` /
+  `lab/sellStored {storageUid}`（退款 = 价格 × `SELL_REFUND_RATE`），三者都 `recountEquipment(next.lab)`；
+  失败一律 clone + 中文 toast（不扣钱、不改 lab）。
+  **仓库里的仪器不提供加成、不收维护费** —— `countEquipment` 只统计台上的仪器，否则仓库等于无限免费的台面。
+- 存档：旧档没有 `lab.storage` 时安全默认成 `[]`（不因此让读档失败）；serialize/hydrate 往返保留仓库内容。
+  `STATE_VERSION` 不变（=3）：`storage` 是向后兼容的新增可选字段。
+- UI：实验室视图新增「仓库」区块（每台「取出 / 卖掉」，空态与「不提供加成、不收维护费」明示）；
+  台面仪器的搬动条新增「存入仓库」（与「卖掉」并列）。
+- 文档：`docs/LAB-SPACE.md` §11/§12 新增；GDD §4.3/§4.4/§12、BALANCE §8、DEV「字段含义」同步为「加成无上限」。
+
+---
+
 ## 契约变更记录
 
 > 本段只登记**契约文档本身的修正**（改 docs/CONTRACT.md / docs/ARCHITECTURE.md），不含玩法数值与代码变更；

@@ -3,7 +3,8 @@
  *
  * 结构：lab.rooms[i] = { id, slots: [bench|null × ROOM_SLOTS] }
  *       bench = { uid, type, items: [{ uid, inst, x, y, rot }] }   rot=true 时占 h×w
- *       lab.nextUid：台子/仪器共用的流水号
+ *       lab.storage = [{ uid, inst }]  仓库（1.3）：不占台面、不提供加成、不收维护费
+ *       lab.nextUid：台子/仪器共用的流水号（仪器进仓库也沿用采购时分配的 uid）
  *       lab.equipment：派生计数（recountEquipment 重算），formulas/rules/bots 照用。
  */
 
@@ -75,6 +76,20 @@ export function findItem(lab, itemUid) {
   return null;
 }
 
+/* ── 1.3 仓库（LAB-SPACE §11）—— 只找/数，不改结构；写入都发生在 engine 的 reducer 里 ── */
+
+/** 仓库条目（{ uid, inst }）或 null。 */
+export function findStorageItem(lab, storageUid) {
+  return (lab.storage || []).find((s) => s.uid === storageUid) || null;
+}
+
+/** 仓库里按种类的仪器台数（与 countEquipment 同口径，但数的是仓库）。 */
+export function countStorage(lab) {
+  const counts = Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0]));
+  for (const s of lab.storage || []) if (counts[s.inst] !== undefined) counts[s.inst] += 1;
+  return counts;
+}
+
 /** 全实验室第一个能放下该仪器的位置；没有返回 null。 */
 export function findSpot(lab, instId) {
   for (const loc of allBenches(lab)) {
@@ -94,7 +109,15 @@ export function findEmptySlot(lab) {
   return null;
 }
 
-/** 由摆放重算按种类计数（= 1.0 的 lab.equipment）。 */
+/**
+ * 由摆放重算按种类计数（= 1.0 的 lab.equipment）。
+ *
+ * 1.3 设计理由（仓库不参与加成/维护的**唯一**依据）：这里只统计**摆在台面上**的仪器，
+ * lab.storage 里的仪器一律不计入 —— equipmentBonus / maintenanceTotal / 项目仪器要求
+ * 全部读这个派生计数，所以仓库里的仪器既不提供加成、也不收维护费。
+ * 反过来做（仓库也给加成）就等于给玩家一块无限大、还免费的台面，台面系统会立刻失去意义：
+ * 「空间不足→加台/开房间」这条唯一的取舍会被「先塞仓库」绕过。
+ */
 export function countEquipment(lab) {
   const counts = Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0]));
   for (const { bench } of allBenches(lab)) {

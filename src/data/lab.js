@@ -36,4 +36,8 @@ export const LAB_TEXT = {
   noSlot: '实验室的台位都占满了，先去申请一间新实验室。',
   roomsMaxed: '学院已经批不出更多房间了。',
   benchNotEmpty: '台上还有仪器，先把仪器搬走或卖掉再拆台。',
+  // 1.3 仓库（§11）
+  notOnBench: '这台仪器不在台面上，收不进仓库。',
+  noStorageItem: '仓库里没有这台仪器。',
+  storageDeployFail: '仓库里这台仪器暂时摆不出来：先加一张实验台，或者腾出台面空间。',
 };

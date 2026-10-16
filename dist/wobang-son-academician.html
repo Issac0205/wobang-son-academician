@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 我帮儿子评院士 v1.2.2 · 单文件构建 · 2026-10-16T08:54:58.696Z · 源码：38 个模块（纯前端 ES Module，零构建依赖） -->
+<!-- 我帮儿子评院士 v1.3.0 · 单文件构建 · 2026-10-16T09:10:17.344Z · 源码：38 个模块（纯前端 ES Module，零构建依赖） -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
@@ -823,6 +823,14 @@ button { font: inherit; color: inherit; }
 .shop-item-stats { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); }
 .shop-item-flavor { font-size: var(--fs-xs); color: var(--ink-faint); font-style: italic; }
 .shop-item-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+/* 1.3 仓库：一行一台仪器（名称 + 占格 + 加成 + 取出/卖掉） */
+.storage-list { display: grid; gap: var(--sp-2); }
+.storage-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--paper-tint); border: 1px solid var(--line); border-left: 3px solid var(--blue); border-radius: var(--r-2); }
+.storage-row.tone-major { border-left-color: var(--jade); }
+.storage-row.tone-major .fp-cell { background: var(--jade); }
+.storage-row .storage-name { font-family: var(--font-title); font-size: var(--fs-lg); }
+.storage-row .storage-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-left: auto; }
+.storage-row .storage-flavor { flex-basis: 100%; font-size: var(--fs-xs); color: var(--ink-faint); font-style: italic; }
 
 @media (max-width: 1100px) { .room-floor { grid-template-columns: minmax(0, 1fr) !important; } }
 @media (max-width: 560px) { :root { --cell: 28px; } }
@@ -1088,7 +1096,7 @@ const INSTRUMENTS = [
   { id: 'elisa', name: '酶标仪', tier: 'major', tierLabel: '大幅', bonus: 0.15, initCount: 0, price: 22, maintain: 0.20, tierGate: 2, w: 2, h: 1, flavor: '96 孔板排队等读数。' },
   { id: 'gc', name: '气相', tier: 'major', tierLabel: '大幅', bonus: 0.15, initCount: 0, price: 38, maintain: 0.40, tierGate: 3, w: 2, h: 2, flavor: '载气钢瓶得用链子拴在墙上。' },
   { id: 'bath', name: '水浴锅', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 1, price: 0.8, maintain: 0.01, tierGate: 1, w: 1, h: 1, flavor: '常年 37℃，冬天大家都来暖手。' },
-  // v1.2 策划值：固定价，科研加成仍受原全局上限约束。
+  // v1.2 策划值：固定价；v1.3 起科研加成无上限（堆仪器的唯一约束是台面空间与维护费）。
   { id: 'akta', name: 'AKTA蛋白纯化系统', tier: 'major', tierLabel: '大幅', bonus: 0.15, initCount: 0, price: 65, maintain: 0.65, tierGate: 3, w: 2, h: 2, flavor: '层析峰终于分开，收集管还得一支支编号。' },
   { id: 'uvvis', name: '紫外可见分光光度计', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 0, price: 6, maintain: 0.06, tierGate: 1, w: 1, h: 1, flavor: '先调空白再测样品，比色皿透光面别用手摸。' },
   { id: 'pcr', name: 'PCR仪', tier: 'minor', tierLabel: '小幅', bonus: 0.06, initCount: 0, price: 12, maintain: 0.12, tierGate: 2, w: 1, h: 1, flavor: '扩增跑了一夜，梦里还在调退火温度。' },
@@ -1102,7 +1110,7 @@ const INSTRUMENT_IDS = INSTRUMENTS.map((it) => it.id);
 // w×h = 占格（可旋转 90°）。常量保留，避免旧引用报错。
 const INST_PRICE_GROWTH = 1;    // 不再涨价
 const INST_HOLD_CAP = Infinity; // 不再限台数
-const INST_BONUS_CAP = 0.90;     // 全仪器加成总和上限
+// 1.3：INST_BONUS_CAP 已删除 —— 仪器加成不再封顶，堆仪器要让玩家舒服。
 const INST_COEF_BASE = 1.00;
 const START_INST_BONUS = 0.45;   // SPEC 初始持有量推导值（离心机.06+摇床.06+液相.15+超净台.12+水浴锅.06）
 const TEMP_BROKEN_BONUS_MUL = 0; // 停机当月该仪器贡献倍率
@@ -1146,6 +1154,10 @@ const LAB_TEXT = {
   noSlot: '实验室的台位都占满了，先去申请一间新实验室。',
   roomsMaxed: '学院已经批不出更多房间了。',
   benchNotEmpty: '台上还有仪器，先把仪器搬走或卖掉再拆台。',
+  // 1.3 仓库（§11）
+  notOnBench: '这台仪器不在台面上，收不进仓库。',
+  noStorageItem: '仓库里没有这台仪器。',
+  storageDeployFail: '仓库里这台仪器暂时摆不出来：先加一张实验台，或者腾出台面空间。',
 };
 
 /* ── src/core/lab.js ── */
@@ -1154,7 +1166,8 @@ const LAB_TEXT = {
  *
  * 结构：lab.rooms[i] = { id, slots: [bench|null × ROOM_SLOTS] }
  *       bench = { uid, type, items: [{ uid, inst, x, y, rot }] }   rot=true 时占 h×w
- *       lab.nextUid：台子/仪器共用的流水号
+ *       lab.storage = [{ uid, inst }]  仓库（1.3）：不占台面、不提供加成、不收维护费
+ *       lab.nextUid：台子/仪器共用的流水号（仪器进仓库也沿用采购时分配的 uid）
  *       lab.equipment：派生计数（recountEquipment 重算），formulas/rules/bots 照用。
  */
 
@@ -1226,6 +1239,20 @@ function findItem(lab, itemUid) {
   return null;
 }
 
+/* ── 1.3 仓库（LAB-SPACE §11）—— 只找/数，不改结构；写入都发生在 engine 的 reducer 里 ── */
+
+/** 仓库条目（{ uid, inst }）或 null。 */
+function findStorageItem(lab, storageUid) {
+  return (lab.storage || []).find((s) => s.uid === storageUid) || null;
+}
+
+/** 仓库里按种类的仪器台数（与 countEquipment 同口径，但数的是仓库）。 */
+function countStorage(lab) {
+  const counts = Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0]));
+  for (const s of lab.storage || []) if (counts[s.inst] !== undefined) counts[s.inst] += 1;
+  return counts;
+}
+
 /** 全实验室第一个能放下该仪器的位置；没有返回 null。 */
 function findSpot(lab, instId) {
   for (const loc of allBenches(lab)) {
@@ -1245,7 +1272,15 @@ function findEmptySlot(lab) {
   return null;
 }
 
-/** 由摆放重算按种类计数（= 1.0 的 lab.equipment）。 */
+/**
+ * 由摆放重算按种类计数（= 1.0 的 lab.equipment）。
+ *
+ * 1.3 设计理由（仓库不参与加成/维护的**唯一**依据）：这里只统计**摆在台面上**的仪器，
+ * lab.storage 里的仪器一律不计入 —— equipmentBonus / maintenanceTotal / 项目仪器要求
+ * 全部读这个派生计数，所以仓库里的仪器既不提供加成、也不收维护费。
+ * 反过来做（仓库也给加成）就等于给玩家一块无限大、还免费的台面，台面系统会立刻失去意义：
+ * 「空间不足→加台/开房间」这条唯一的取舍会被「先塞仓库」绕过。
+ */
 function countEquipment(lab) {
   const counts = Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0]));
   for (const { bench } of allBenches(lab)) {
@@ -2295,6 +2330,8 @@ function createState(opts = {}) {
       // equipment 是派生计数（由摆放重算），加成仍 = START_INST_BONUS（0.45）。
       ...startingLayout(),
       equipment: Object.fromEntries(INSTRUMENTS.map((it) => [it.id, it.initCount])),
+      // 1.3：仓库（不占台面、不提供加成、不收维护费）；开局为空。
+      storage: [],
       equipmentDown: Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0])),
       purchaseCount: Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0])),
       consumeMulThisMonth: 1,
@@ -3428,18 +3465,20 @@ function bonusRawSum(lab) {
   return sum;
 }
 
-/**
- * 全实验室仪器加成的【未截断】总和。
- * 界面必须同时拿到它与 equipmentBonus，才能说清「已经封顶」——
- * 否则玩家买第 9 台仪器时加成不动，会以为新楼层/新仪器没被算进去。
- */
+/** 全实验室仪器加成的总和（停机仪器按 TEMP_BROKEN_BONUS_MUL 折算）。
+ *  1.3 起不再封顶，因此它与 equipmentBonus 恒等；保留导出只为旧调用方的接口不变。
+ *  口径：只统计**摆在台面上**的仪器（lab.equipment 是摆放的派生计数），仓库里的不算。 */
 function equipmentBonusSum(lab) {
   return round(bonusRawSum(lab), 4);
 }
 
-/** 全实验室仪器加成（停机仪器按 TEMP_BROKEN_BONUS_MUL 折算），上限 INST_BONUS_CAP。 */
+/**
+ * 全实验室仪器加成（停机仪器按 TEMP_BROKEN_BONUS_MUL 折算）。
+ * 1.3：取消 INST_BONUS_CAP —— 直接返回全部仪器加成之和，不再截断。
+ * 口径：只统计摆在台面上的仪器；仓库里的仪器不提供加成（见 core/lab.js 的 countEquipment）。
+ */
 function equipmentBonus(lab) {
-  return round(Math.min(bonusRawSum(lab), INST_BONUS_CAP), 4);
+  return round(bonusRawSum(lab), 4);
 }
 
 /** 每月仪器维护费（停机的仪器不收费：坏了就不用校准）。 */
@@ -4027,6 +4066,10 @@ const ACTIONS = {
   buyInstrument: (payload) => ({ type: 'lab/buyInstrument', payload }),
   moveItem: (payload) => ({ type: 'lab/moveItem', payload }),
   sellItem: (payload) => ({ type: 'lab/sellItem', payload }),
+  // 1.3 仓库：台面 → 仓库 / 仓库 → 台面 / 仓库直接卖
+  storeItem: (payload) => ({ type: 'lab/storeItem', payload }),
+  deployItem: (payload) => ({ type: 'lab/deployItem', payload }),
+  sellStored: (payload) => ({ type: 'lab/sellStored', payload }),
   acceptProject: (payload) => ({ type: 'game/acceptProject', payload }),
   lockOffer: (payload) => ({ type: 'game/lockOffer', payload }),
   assignStudent: (payload) => ({ type: 'game/assignStudent', payload }),
@@ -4087,6 +4130,9 @@ function reduce(state, action) {
     case 'lab/sellBench': return reduceSellBench(state, action.payload || {});
     case 'lab/moveItem': return reduceMoveItem(state, action.payload || {});
     case 'lab/sellItem': return reduceSellItem(state, action.payload || {});
+    case 'lab/storeItem': return reduceStoreItem(state, action.payload || {});
+    case 'lab/deployItem': return reduceDeployItem(state, action.payload || {});
+    case 'lab/sellStored': return reduceSellStored(state, action.payload || {});
     case 'game/acceptProject': return reduceAcceptProject(state, action.payload || {});
     case 'game/lockOffer': return reduceLockOffer(state, action.payload || {});
     case 'game/assignStudent': return reduceAssign(state, action.payload || {}, true);
@@ -5201,6 +5247,70 @@ function reduceSellItem(state, payload) {
   return next;
 }
 
+/* ── 1.3 仓库（LAB-SPACE §11）：台面 ⇄ 仓库；仓库里的仪器不给加成、不收维护费 ── */
+
+/** 失败一律「克隆 + toast」：不扣钱、不改 lab（只改 ui.toast），与既有 lab/* 动作同风格。 */
+function labReject(state, text) {
+  const next = cloneState(state);
+  next.ui.toast = text;
+  return next;
+}
+
+/** lab/storeItem { itemUid }：把台面上的某台仪器移入仓库；不在台面上则拒绝。 */
+function reduceStoreItem(state, payload) {
+  const found = findItem(state.lab, payload.itemUid);
+  if (!found) return labReject(state, LAB_TEXT.notOnBench);
+  const def = INSTRUMENT_MAP[found.item.inst];
+  if (!def) return state;
+  const next = cloneState(state);
+  const loc = findItem(next.lab, payload.itemUid);
+  loc.bench.items = loc.bench.items.filter((it) => it.uid !== loc.item.uid);
+  next.lab.storage.push({ uid: loc.item.uid, inst: loc.item.inst });
+  recountEquipment(next.lab);
+  pushChronicle(next, { kind: 'lab', tone: 'system', text: '把一台' + def.name + '收进仓库（不占台面，也不提供加成）。' });
+  return next;
+}
+
+/**
+ * lab/deployItem { storageUid, benchUid?, x?, y?, rot? }：从仓库取出摆到台面。
+ * 没给坐标时自动找第一个能放下的位置；放不下则拒绝，且**保持在仓库里**（不静默吞掉资产）。
+ */
+function reduceDeployItem(state, payload) {
+  const entry = findStorageItem(state.lab, payload.storageUid);
+  if (!entry) return labReject(state, LAB_TEXT.noStorageItem);
+  const def = INSTRUMENT_MAP[entry.inst];
+  if (!def) return state;
+  const next = cloneState(state);
+  const stored = findStorageItem(next.lab, payload.storageUid);
+  const spot = resolvePlacement(next.lab, stored.inst, payload, null);
+  if (spot.error) {
+    next.ui.toast = spot.error === LAB_TEXT.badSpot ? spot.error : LAB_TEXT.storageDeployFail;
+    return next;
+  }
+  const loc = findBench(next.lab, spot.benchUid);
+  loc.bench.items.push({ uid: stored.uid, inst: stored.inst, x: spot.x, y: spot.y, rot: spot.rot });
+  next.lab.storage = next.lab.storage.filter((s) => s.uid !== stored.uid);
+  recountEquipment(next.lab);
+  pushChronicle(next, { kind: 'lab', tone: 'good', text: loc.room.id + ' 从仓库取出一台' + def.name + '摆上了台面。' });
+  return next;
+}
+
+/** lab/sellStored { storageUid }：从仓库直接卖掉，退款与台面卖出同口径（SELL_REFUND_RATE）。 */
+function reduceSellStored(state, payload) {
+  const entry = findStorageItem(state.lab, payload.storageUid);
+  if (!entry) return labReject(state, LAB_TEXT.noStorageItem);
+  const def = INSTRUMENT_MAP[entry.inst];
+  if (!def) return state;
+  const next = cloneState(state);
+  const stored = findStorageItem(next.lab, payload.storageUid);
+  const refund = round(instrumentPrice(stored.inst) * SELL_REFUND_RATE, 2);
+  next.lab.storage = next.lab.storage.filter((s) => s.uid !== stored.uid);
+  next.player.money = round(next.player.money + refund, 2);
+  recountEquipment(next.lab);
+  pushChronicle(next, { kind: 'lab', tone: 'system', text: '把仓库里的' + def.name + '转给了兄弟课题组，回收 ' + refund + ' 万。' });
+  return next;
+}
+
 function reduceAcceptProject(state, payload) {
   const offer = state.market.pool.find((o) => o.offerId === payload.offerId && o.kind === 'project');
   if (!offer) return state;
@@ -6182,6 +6292,17 @@ function validateState(rawState) {
     if (layout) { base.lab.rooms = layout.rooms; base.lab.nextUid = layout.nextUid; }
   }
   base.lab.equipment = countEquipment(base.lab);
+  // 1.3：仓库（lab.storage）。旧档没有该字段 → 安全默认成 []（不因此让读档失败）；
+  // 逐项校验：未知仪器 id / 非法 uid / 与台面重复的 uid 一律丢弃（重复 uid 会让 store/deploy 指错台）。
+  // 往返必须保留仓库内容，因此这里不能图省事清空。
+  const usedUids = new Set();
+  for (const { bench } of allBenches(base.lab)) {
+    usedUids.add(bench.uid);
+    for (const it of bench.items || []) usedUids.add(it.uid);
+  }
+  base.lab.storage = sanitizeStorage(lab.storage, usedUids);
+  // uid 流水号要覆盖仓库里的条目，否则以后新买的台/仪器会和仓库里的 uid 撞号。
+  for (const s of base.lab.storage) base.lab.nextUid = Math.max(base.lab.nextUid, uidNumber(s.uid));
   // t3（t4 暴露的 1.0 潜伏 bug）：下月耗材倍率是事件写进 lab 的，读档不恢复就会丢掉事件效果。
   base.lab.consumeMulThisMonth = round(num(lab.consumeMulThisMonth, CONSUME_MUL_DEFAULT, CONSUME_MUL_SAVE_MIN, CONSUME_MUL_SAVE_MAX), 3);
   for (const [id, months] of Object.entries(lab.equipmentDown || {})) {
@@ -6281,6 +6402,30 @@ function validateState(rawState) {
     base.ui = { ...base.ui, ...pickUi(rawState.ui) };
   }
   return base;
+}
+
+/** uid 形如 'i12' / 'b3'：取数字部分，非法一律 0（与 core/lab.js 的 uidNum 同口径）。 */
+function uidNumber(uid) {
+  const n = Number(String(uid).slice(1));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * 1.3：仓库逐项校验（LAB-SPACE §11）。返回 [{ uid, inst }]；
+ * raw 不是数组（含旧档的 undefined）→ []，绝不抛异常。
+ * @param {any} raw 存档里的 lab.storage
+ * @param {Set<string>} usedUids 台面已经占用的 uid，仓库不得重复
+ */
+function sanitizeStorage(raw, usedUids) {
+  const seen = usedUids || new Set();
+  const out = [];
+  for (const s of Array.isArray(raw) ? raw : []) {
+    if (!s || typeof s !== 'object' || typeof s.uid !== 'string' || seen.has(s.uid)) continue;
+    if (!INSTRUMENT_MAP[s.inst]) continue;
+    seen.add(s.uid);
+    out.push({ uid: s.uid, inst: s.inst });
+  }
+  return out;
 }
 
 /** 月度回执的白名单校验：字段类型不对就丢，数组截断到合理长度。 */
@@ -6744,16 +6889,44 @@ function selectLabSpace(state) {
 }
 
 function selectLab(state) {
+  // 1.3：加成不再封顶 → 删掉 bonusCapPct / bonusCapped（没有「已封顶」这回事了）。
+  // bonusRawPct 保留为同值，纯为兼容旧调用方。
+  const bonusPct = Math.round(equipmentBonus(state.lab) * 100);
   return {
-    bonusPct: Math.round(equipmentBonus(state.lab) * 100),
-    // 上限与「已封顶」必须给到界面：第 9 台起加成恒为 0，界面不说清就是误导（用户实测反馈）。
-    bonusCapPct: Math.round(INST_BONUS_CAP * 100),
+    bonusPct,
     bonusRawPct: Math.round(equipmentBonusSum(state.lab) * 100),
-    bonusCapped: equipmentBonusSum(state.lab) >= INST_BONUS_CAP,
     maintain: maintenanceTotal(state.lab),
     equipment: selectEquipment(state),
+    storage: selectStorage(state),
     space: selectLabSpace(state),
   };
+}
+
+/**
+ * 1.3 仓库（LAB-SPACE §11）：只读元数据，UI 直接渲染。
+ * 仓库里的仪器**不提供加成、不收维护费**（口径见 core/lab.js 的 countEquipment）；
+ * 卖出退款与台面同口径（SELL_REFUND_RATE）。
+ */
+function selectStorage(state) {
+  return (state.lab.storage || []).map((s) => {
+    const def = INSTRUMENT_MAP[s.inst];
+    if (!def) return null;
+    return {
+      uid: s.uid,
+      inst: s.inst,
+      name: def.name,
+      tier: def.tier,
+      tierLabel: def.tierLabel,
+      w: def.w,
+      h: def.h,
+      cells: def.w * def.h,
+      flavor: def.flavor || '',
+      bonusPct: Math.round(def.bonus * 100),
+      maintain: def.maintain,
+      down: (state.lab.equipmentDown[def.id] || 0) > 0,
+      sellRefund: Math.round(instrumentPrice(def.id) * SELL_REFUND_RATE * 100) / 100,
+    };
+  }).filter(Boolean);
 }
 
 function selectMarket(state) {
@@ -7270,6 +7443,27 @@ const UI_EMPTY = {
   equipment: '仪器台空了。先去「耗材库」确认有耗材，再回「仪器台」买设备。',
   chronicle: '还没有发生任何值得记下来的事。推进一个月试试。',
   active: '名下没有在读学生。招人——这是唯一能把项目推起来的办法。',
+};
+
+/**
+ * 1.3 仓库（LAB-SPACE §11）：静态文案，数字（占格/加成/退款）全部来自 vm.crew.lab.storage。
+ * 口径必须写死在这里、不许含糊：仓库里的仪器**不提供加成、不收维护费**。
+ */
+const UI_STORAGE = {
+  title: '仓库',
+  subtitle: '闲置仪器先收进来，腾出台面重新排布局；要用的时候再取出来摆上台。',
+  empty: '仓库是空的。台面上的仪器可以「存入仓库」，先腾出格子再重排布局。',
+  rule: '仓库里的仪器不提供加成、不收维护费——它们只是放在那里，不参与任何科研计算。',
+  take: '取出',
+  takeTitle: '取出后拿在手上，再点台面空格放下',
+  sell: '卖掉',
+  sellTitle: '与台面卖出同口径：回收半价',
+  store: '存入仓库',
+  storeTitle: '把台上这台仪器收进仓库，腾出格子',
+  held: '手上：仓库取出',
+  heldTip: '点选台面空格放置；可用下方按钮旋转或取消。桌面也支持 R / Esc。',
+  cells: '占格',
+  bonus: '加成',
 };
 
 /** 一键分配工作（t25/t26）：数字与文案里的每个数都来自 vm.autoAssign，UI 只排版不推导。 */
@@ -7949,6 +8143,7 @@ function renderHud(vm) {
 
 
 
+
 const UI_LAB = {
   title: '实验室 · 空间台账',
   subtitle: '房间里摆实验台，台面上摆仪器；仪器只看「摆进来了几台」，放不下就加台、开新房。',
@@ -7956,6 +8151,7 @@ const UI_LAB = {
   shopSub: '选择仪器查看价格与规格；拿起后点台面空格放置，或自动摆放。',
   holdBuy: '手上：待采购',
   holdMove: '手上：搬动中',
+  holdDeploy: UI_STORAGE.held,
   holdTip: '点选空格放置；可用下方按钮旋转或取消。桌面也支持 R / Esc。',
   emptySlot: '空台位',
   roomLocked: '尚未申请',
@@ -8061,14 +8257,17 @@ function uiNextRoom(space) {
 function uiHeldBar(vm, pick) {
   if (!pick) return null;
   const isMove = pick.mode === 'move';
-  return h('div', { class: 'held-bar' + (isMove ? ' is-move' : ''), dataset: { role: 'held-bar' } }, [
-    tag(isMove ? UI_LAB.holdMove : UI_LAB.holdBuy, isMove ? 'info' : 'warn'),
-    h('strong', { class: 'held-name', text: pick.name + (isMove ? '' : ' · ' + uiNum1(pick.price) + ' 万') }),
+  const isDeploy = pick.mode === 'deploy';        // 1.3：从仓库取出（拿在手上 → 点台位）
+  const held = isMove || isDeploy;
+  return h('div', { class: 'held-bar' + (held ? ' is-move' : ''), dataset: { role: 'held-bar' } }, [
+    tag(isMove ? UI_LAB.holdMove : (isDeploy ? UI_LAB.holdDeploy : UI_LAB.holdBuy), held ? 'info' : 'warn'),
+    h('strong', { class: 'held-name', text: pick.name + (pick.mode === 'buy' ? ' · ' + uiNum1(pick.price) + ' 万' : '') }),
     uiFootprint(pick.w, pick.h),
     h('span', { class: 'held-size', text: pick.w + '×' + pick.h }),
-    h('span', { class: 'held-tip', text: UI_LAB.holdTip }),
+    h('span', { class: 'held-tip', text: pick.mode === 'deploy' ? UI_STORAGE.heldTip : UI_LAB.holdTip }),
     h('span', { class: 'held-actions' }, [
       pick.w !== pick.h ? button('旋转', { action: 'lab-rotate' }, { class: 'btn-xs' }) : null,
+      isMove ? button(UI_STORAGE.store, { action: 'lab-store-item', uid: pick.uid }, { class: 'btn-xs', title: UI_STORAGE.storeTitle }) : null,
       isMove ? button('卖掉 +' + uiNum1(pick.refund) + ' 万', { action: 'lab-sell-item', uid: pick.uid }, { class: 'btn-xs btn-danger-ghost', title: '转给兄弟课题组，回收半价' }) : null,
       button('取消放置', { action: 'lab-cancel' }, { class: 'btn-ghost btn-xs' }),
     ]),
@@ -8095,7 +8294,7 @@ function uiShopCard(vm, pick) {
       ]),
       h('div', { class: 'shop-item-stats' }, [
         uiInlineStat('占格', e.w + '×' + e.h),
-        uiInlineStat('加成', lab.bonusCapped ? '+0%（已封顶）' : '+' + e.bonusPct + '%', lab.bonusCapped ? 'warn' : null),
+        uiInlineStat('加成', '+' + e.bonusPct + '%'),
         uiInlineStat('维护', uiNum1(e.maintain) + ' 万/月'),
       ]),
       e.flavor ? h('p', { class: 'shop-item-flavor', text: e.flavor }) : null,
@@ -8114,13 +8313,36 @@ function uiShopCard(vm, pick) {
   return uiCard(UI_LAB.shopTitle, UI_LAB.shopSub, null, [
     h('label', { class: 'catalog-select' }, [h('span', { text: '申购仪器 · 共 ' + lab.equipment.length + ' 种' }), select]),
     h('div', { class: 'shop-grid' }, rows),
-    uiNote(lab.bonusCapped
-      ? '仪器加成已经封顶（上限 ' + lab.bonusCapPct + '%）：再买仪器不会提高科研加成，但它仍可能满足项目的「设备要求」；维护费照收。'
-      : '大幅仪器贵但加成高；停机当月不提供加成。仪器没有持有上限，唯一的限制是台面空间；全仪器加成上限 ' + lab.bonusCapPct + '%。'),
+    uiNote('大幅仪器贵但加成高；停机当月不提供加成。仪器没有持有上限，唯一的限制是台面空间。'),
   ]);
 }
 
-/** 课题组 →「实验室」分栏：空间台账 + 申购目录。 */
+/**
+ * 1.3 仓库区块（LAB-SPACE §11）：列出仓库里的仪器，每台「取出 / 卖掉」。
+ * 取出只设置 app.js 的本地「拿在手上」状态（localUi.labPick），落位由 core 的 fits 判定；
+ * 这里不 import src/data / formulas，也绝不在 UI 里算规则。
+ */
+function uiStorageCard(vm) {
+  const list = vm.crew.lab.storage || [];
+  const rows = list.map((s) => h('div', { class: 'storage-row tone-' + s.tier, dataset: { role: 'storage-item', uid: s.uid } }, [
+    uiFootprint(s.w, s.h),
+    h('strong', { class: 'storage-name', text: s.name }),
+    tag(s.tierLabel, s.tier === 'major' ? 'good' : 'mute'),
+    uiInlineStat(UI_STORAGE.cells, s.w + '×' + s.h),
+    uiInlineStat(UI_STORAGE.bonus, '+' + s.bonusPct + '%'),
+    h('span', { class: 'storage-actions' }, [
+      button(UI_STORAGE.take, { action: 'lab-deploy-item', storageUid: s.uid }, { class: 'btn-xs', title: UI_STORAGE.takeTitle }),
+      button(UI_STORAGE.sell + ' +' + uiNum1(s.sellRefund) + ' 万', { action: 'lab-sell-stored', storageUid: s.uid }, { class: 'btn-xs btn-danger-ghost', title: UI_STORAGE.sellTitle }),
+    ]),
+    s.flavor ? h('span', { class: 'storage-flavor', text: s.flavor }) : null,
+  ]));
+  return uiCard(UI_STORAGE.title, UI_STORAGE.subtitle, null, [
+    rows.length ? h('div', { class: 'storage-list' }, rows) : h('p', { class: 'muted', text: UI_STORAGE.empty }),
+    uiNote(UI_STORAGE.rule),
+  ]);
+}
+
+/** 课题组 →「实验室」分栏：空间台账 + 仓库 + 申购目录。 */
 function renderLabSpace(vm, ctx) {
   const lab = vm.crew.lab;
   const space = lab.space;
@@ -8130,12 +8352,14 @@ function renderLabSpace(vm, ctx) {
     uiInlineStat('实验室', sum.rooms + ' / ' + sum.roomMax + ' 间'),
     uiInlineStat('实验台', sum.benches + ' 张 · 空台位 ' + sum.slotsFree),
     uiInlineStat('台面格子', sum.used + ' / ' + sum.cells, sum.free <= 1 ? 'warn' : null),
-    uiInlineStat('全仪器加成', lab.bonusPct + '%' + (lab.bonusCapped ? '（已封顶）' : '（上限 ' + lab.bonusCapPct + '%）'), lab.bonusCapped ? 'warn' : null),
+    uiInlineStat('全仪器加成', lab.bonusPct + '%'),
     uiInlineStat('每月维护', uiNum1(lab.maintain) + ' 万'),
+    uiInlineStat('仓库', (lab.storage || []).length + ' 台'),
   ]);
   const rooms = h('div', { class: 'rooms' }, space.rooms.map((r) => uiRoom(r, space, pick)).concat([uiNextRoom(space)]));
   return [
     uiCard(UI_LAB.title, UI_LAB.subtitle, null, [head, uiHeldBar(vm, pick), rooms], { class: 'card-lab' + (pick ? ' is-holding' : '') }),
+    uiStorageCard(vm),
     uiShopCard(vm, pick),
   ];
 }
@@ -9596,6 +9820,10 @@ function createApp(options) {
     'lab-cancel': () => { localUi.labPick = null; render(); },
     'lab-cell': (el) => placeAt(el.dataset.benchUid, Number(el.dataset.x), Number(el.dataset.y)),
     'lab-sell-item': (el) => { localUi.labPick = null; dispatch('lab/sellItem', { itemUid: el.dataset.uid }); render(); },
+    // 1.3 仓库：存入 / 取出（取出进入「拿在手上 → 点台位」流程）/ 直接卖
+    'lab-store-item': (el) => { localUi.labPick = null; dispatch('lab/storeItem', { itemUid: el.dataset.uid }); render(); },
+    'lab-deploy-item': (el) => { localUi.labPick = pickFromStorage(el.dataset.storageUid); render(); },
+    'lab-sell-stored': (el) => { localUi.labPick = null; dispatch('lab/sellStored', { storageUid: el.dataset.storageUid }); render(); },
     'lab-sell-bench': (el) => dispatch('lab/sellBench', { benchUid: el.dataset.benchUid }),
     'lab-buy-bench': (el) => dispatch('lab/buyBench', { type: el.dataset.type, roomIdx: Number(el.dataset.roomIdx), slot: Number(el.dataset.slot) }),
     'lab-buy-room': () => dispatch('lab/buyRoom', {}),
@@ -9681,6 +9909,14 @@ function createApp(options) {
     return null;
   }
 
+  /** 仓库条目 → 「拿在手上」状态（取出）；与 pickFromItem 同结构，mode='deploy'。 */
+  function pickFromStorage(uid) {
+    const lab = labSpaceVm();
+    const s = lab ? (lab.storage || []).find((x) => x.uid === uid) : null;
+    if (!s) return null;
+    return { mode: 'deploy', storageUid: s.uid, id: s.inst, name: s.name, w: s.w, h: s.h, baseW: s.w, baseH: s.h, rot: false };
+  }
+
   function rotatePick() {
     const p = localUi.labPick;
     if (!p || p.w === p.h) return;
@@ -9693,6 +9929,7 @@ function createApp(options) {
     if (!p || !benchUid || !Number.isInteger(x) || !Number.isInteger(y)) return;
     const before = store.getState().lab;
     if (p.mode === 'buy') dispatch('lab/buyInstrument', { id: p.id, benchUid, x, y, rot: Boolean(p.rot) });
+    else if (p.mode === 'deploy') dispatch('lab/deployItem', { storageUid: p.storageUid, benchUid, x, y, rot: Boolean(p.rot) });
     else dispatch('lab/moveItem', { itemUid: p.uid, benchUid, x, y, rot: Boolean(p.rot) });
     // 放成功（摆放变了）才把手上的东西清掉；放不下时 core 会 toast，手上保持原样方便换位置
     if (store.getState().lab !== before && JSON.stringify(store.getState().lab.rooms) !== JSON.stringify(before.rooms)) localUi.labPick = null;

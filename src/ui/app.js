@@ -130,6 +130,10 @@ export function createApp(options) {
     'lab-cancel': () => { localUi.labPick = null; render(); },
     'lab-cell': (el) => placeAt(el.dataset.benchUid, Number(el.dataset.x), Number(el.dataset.y)),
     'lab-sell-item': (el) => { localUi.labPick = null; dispatch('lab/sellItem', { itemUid: el.dataset.uid }); render(); },
+    // 1.3 仓库：存入 / 取出（取出进入「拿在手上 → 点台位」流程）/ 直接卖
+    'lab-store-item': (el) => { localUi.labPick = null; dispatch('lab/storeItem', { itemUid: el.dataset.uid }); render(); },
+    'lab-deploy-item': (el) => { localUi.labPick = pickFromStorage(el.dataset.storageUid); render(); },
+    'lab-sell-stored': (el) => { localUi.labPick = null; dispatch('lab/sellStored', { storageUid: el.dataset.storageUid }); render(); },
     'lab-sell-bench': (el) => dispatch('lab/sellBench', { benchUid: el.dataset.benchUid }),
     'lab-buy-bench': (el) => dispatch('lab/buyBench', { type: el.dataset.type, roomIdx: Number(el.dataset.roomIdx), slot: Number(el.dataset.slot) }),
     'lab-buy-room': () => dispatch('lab/buyRoom', {}),
@@ -215,6 +219,14 @@ export function createApp(options) {
     return null;
   }
 
+  /** 仓库条目 → 「拿在手上」状态（取出）；与 pickFromItem 同结构，mode='deploy'。 */
+  function pickFromStorage(uid) {
+    const lab = labSpaceVm();
+    const s = lab ? (lab.storage || []).find((x) => x.uid === uid) : null;
+    if (!s) return null;
+    return { mode: 'deploy', storageUid: s.uid, id: s.inst, name: s.name, w: s.w, h: s.h, baseW: s.w, baseH: s.h, rot: false };
+  }
+
   function rotatePick() {
     const p = localUi.labPick;
     if (!p || p.w === p.h) return;
@@ -227,6 +239,7 @@ export function createApp(options) {
     if (!p || !benchUid || !Number.isInteger(x) || !Number.isInteger(y)) return;
     const before = store.getState().lab;
     if (p.mode === 'buy') dispatch('lab/buyInstrument', { id: p.id, benchUid, x, y, rot: Boolean(p.rot) });
+    else if (p.mode === 'deploy') dispatch('lab/deployItem', { storageUid: p.storageUid, benchUid, x, y, rot: Boolean(p.rot) });
     else dispatch('lab/moveItem', { itemUid: p.uid, benchUid, x, y, rot: Boolean(p.rot) });
     // 放成功（摆放变了）才把手上的东西清掉；放不下时 core 会 toast，手上保持原样方便换位置
     if (store.getState().lab !== before && JSON.stringify(store.getState().lab.rooms) !== JSON.stringify(before.rooms)) localUi.labPick = null;

@@ -4,7 +4,8 @@
  * 断言三件事：
  *   ① 摆放校验：fits 的越界 / 碰撞 / 旋转 / 移动时忽略自身；引擎动作拒绝非法坐标且不扣钱；
  *   ② 存档迁移 v2 → v3：只有 equipment 计数的旧档按 FFD 自动摆放，计数逐项不变；
- *   ③ 加成不变：科研加成/维护费只看已摆放仪器的派生计数，与 1.0 公式同值。
+ *   ③ 加成不变：科研加成/维护费只看已摆放仪器的派生计数，与 1.0 公式同值；
+ *   ④ 1.3：加成不封顶（堆仪器必须继续涨）+ 仓库（不提供加成、不收维护费，可取出/卖出）。
  *
  * 运行：node 评院士/tests/lab.test.mjs
  */
@@ -17,7 +18,7 @@ import { fits, footprint, findSpot, countEquipment, layoutFromCounts } from '../
 import { equipmentBonus, maintenanceTotal, instrumentPrice } from '../src/core/formulas.js';
 import { INSTRUMENTS, INSTRUMENT_MAP } from '../src/data/instruments.js';
 import { PROJECT_MAP } from '../src/data/projects.js';
-import { ROOMS, BENCH_MAP, ROOM_MAX } from '../src/data/lab.js';
+import { ROOMS, BENCH_MAP, ROOM_MAX, SELL_REFUND_RATE } from '../src/data/lab.js';
 import { selectLabSpace, selectLab } from '../src/core/selectors.js';
 
 const mods = { createState, reduce, ACTIONS };
@@ -237,7 +238,7 @@ for (const defId of ['E5', 'E6', 'N7']) {
     '引擎拒绝时要写明「需要哪个头衔」和「你现在是什么头衔」', String(denied.ui.toast));
 }
 
-/* ── 10 加成封顶必须可见（用户反馈：新楼层买了新仪器加成不涨） ── */
+/* ── 10 加成不封顶（v1.3 用户反馈：仪器加成不应该封顶，堆仪器要让玩家舒服） ── */
 {
   let st = freshGame(mods, 'lab-bonus-cap');
   st.player.money = 5000;
@@ -252,16 +253,98 @@ for (const defId of ['E5', 'E6', 'N7']) {
       if ((st.lab.equipment[d.id] || 0) === before) break;
     }
   }
+  // 未截断总和：按 src/data 的 bonus × 台面台数独立算一遍（断言用实际计算值，不写死数字）
+  const rawSum = INSTRUMENTS.reduce((sum, d) => sum + d.bonus * (st.lab.equipment[d.id] || 0), 0);
+  const expectPct = Math.round(rawSum * 100);
   const lab = selectLab(st);
-  s.ok(lab.bonusRawPct > lab.bonusCapPct,
-    '12 种仪器各一台的未截断加成超过上限（' + lab.bonusRawPct + '% > ' + lab.bonusCapPct + '%）');
-  s.eq(lab.bonusPct, lab.bonusCapPct, '因此实际加成被夹到上限 ' + lab.bonusCapPct + '%');
-  s.ok(lab.bonusCapped === true, '视图层标记 bonusCapped=true（界面必须显示「已封顶」）', String(lab.bonusCapped));
-  // 封顶后再添一台（改派生计数，等价于「又买到并摆上一台」；不依赖还有没有空台位）：加成不变
+  s.eq(lab.bonusPct, expectPct, '12 种各一台：bonusPct = 未截断总和 ' + expectPct + '%');
+  s.ok(rawSum > 0.90, '这 12 台的裸加成确实超过旧上限 0.90（实际 ' + rawSum.toFixed(4) + '）');
+  s.ok(lab.bonusPct > 90, '实际加成超过旧上限 90%（' + lab.bonusPct + '%）→ 不再截断');
+  s.eq(lab.bonusCapPct, undefined, 'v1.3 已删除 bonusCapPct 字段');
+  s.eq(lab.bonusCapped, undefined, 'v1.3 已删除 bonusCapped 字段（不存在「已封顶」）');
+  s.eq(lab.bonusRawPct, lab.bonusPct, 'bonusRawPct 与 bonusPct 同值');
+  // 再添一台（改派生计数，等价于「又买到并摆上一台」；不依赖还有没有空台位）：加成必须继续变大
   const st2 = { ...st, lab: { ...st.lab, equipment: { ...st.lab.equipment, bath: (st.lab.equipment.bath || 0) + 1 } } };
   const lab2 = selectLab(st2);
-  s.eq(lab2.bonusPct, lab.bonusPct, '封顶后再添一台，实际加成确实不变（正是用户看到的现象）');
-  s.ok(lab2.bonusRawPct > lab.bonusRawPct, '但未截断的原始加成确实涨了（仪器被算进去了，只是被上限夹住）', lab.bonusRawPct + '% → ' + lab2.bonusRawPct + '%');
+  s.ok(lab2.bonusPct > lab.bonusPct, '再添一台，加成【继续变大】（' + lab.bonusPct + '% → ' + lab2.bonusPct + '%）');
+  s.near(equipmentBonus(st2.lab) - equipmentBonus(st.lab), 0.06, 0.0001, '增量 = 水浴锅单台加成（不再被上限吃掉）');
+  // 实际读数（给交付报告用）
+  s.note('加成实测：12 种各一台 = ' + lab.bonusPct + '%；再加一台水浴锅 = ' + lab2.bonusPct + '%');
+}
+
+/* ── 11 仓库（v1.3 / LAB-SPACE §11）：不提供加成、不收维护费，可取出/卖出 ── */
+{
+  const benchesOf = (st) => st.lab.rooms.flatMap((r) => r.slots).filter(Boolean);
+  const firstItem = (st) => { const b = benchesOf(st).find((x) => x.items.length > 0); return b.items[0]; };
+  const itemsOf = (st) => benchesOf(st).flatMap((b) => b.items);
+
+  // ① 存入仓库：台面计数与 equipmentBonus 下降，维护费同步下降，钱不变
+  let g = rich('lab-storage');
+  const target = firstItem(g);
+  const money0 = g.player.money;
+  const count0 = countEquipment(g.lab)[target.inst] || 0;
+  const bonus0 = equipmentBonus(g.lab);
+  const maint0 = maintenanceTotal(g.lab);
+  const stored = reduce(g, ACTIONS.storeItem({ itemUid: target.uid }));
+  s.eq(stored.lab.storage.length, 1, '存入仓库：仓库多一台');
+  s.eq(countEquipment(stored.lab)[target.inst] || 0, count0 - 1, '存入仓库：台面计数 -1');
+  s.eq(stored.lab.equipment[target.inst] || 0, count0 - 1, '存入仓库：lab.equipment 派生计数同步下降');
+  s.ok(equipmentBonus(stored.lab) < bonus0, '存入仓库：加成下降（' + bonus0 + ' → ' + equipmentBonus(stored.lab) + '）');
+  s.ok(maintenanceTotal(stored.lab) < maint0, '存入仓库：维护费同步下降（仓库不收维护费）');
+  s.eq(stored.player.money, money0, '存入仓库：钱不变（这不是卖出）');
+  s.eq(stored.lab.storage[0].uid, target.uid, '仓库沿用仪器原 uid（走既有 lab.nextUid 计数）');
+  s.eq(selectLab(stored).storage.length, 1, 'viewmodel 暴露仓库列表');
+
+  // 拒绝路径：不在台面上的仪器
+  const rejected = reduce(stored, ACTIONS.storeItem({ itemUid: 'i_no_such' }));
+  s.eq(rejected.lab.storage.length, 1, '存入不在台面的仪器：被拒，仓库不变');
+  s.eq(rejected.player.money, stored.player.money, '存入被拒：不扣钱');
+  s.ok(Boolean(rejected.ui.toast), '存入被拒：给中文提示', String(rejected.ui.toast));
+
+  // ② 取出放回：恢复原值
+  const back = reduce(stored, ACTIONS.deployItem({ storageUid: target.uid }));
+  s.eq(back.lab.storage.length, 0, '取出：仓库清空');
+  s.eq(countEquipment(back.lab)[target.inst] || 0, count0, '取出放回：台面计数恢复');
+  s.eq(equipmentBonus(back.lab), bonus0, '取出放回：加成恢复原值');
+  s.eq(maintenanceTotal(back.lab), maint0, '取出放回：维护费恢复原值');
+  s.eq(back.player.money, stored.player.money, '取出不花钱');
+  s.eq(itemsOf(back).filter((it) => it.uid === target.uid).length, 1, '取出后台面上恰好一台该 uid（没有复制）');
+
+  // 取出被拒（仓库里没有）：状态不变
+  const noDeploy = reduce(back, ACTIONS.deployItem({ storageUid: target.uid }));
+  s.eq(noDeploy.lab.storage.length, 0, '取出不存在的仓库条目：被拒');
+  s.ok(Boolean(noDeploy.ui.toast), '取出不存在的仓库条目：给提示', String(noDeploy.ui.toast));
+
+  // 存档往返：仓库内容保留
+  const rt = hydrate(JSON.parse(JSON.stringify(serialize(stored))));
+  s.eq(rt.lab.storage, stored.lab.storage, '存档往返保留仓库内容');
+  s.eq(rt.lab.rooms, stored.lab.rooms, '存档往返保留摆放');
+
+  // ③ 从仓库卖出：退款 = 价格 × SELL_REFUND_RATE（与台面同口径）
+  let g2 = rich('lab-storage-sell');
+  const t2 = firstItem(g2);
+  g2 = reduce(g2, ACTIONS.storeItem({ itemUid: t2.uid }));
+  const money2 = g2.player.money;
+  const sold = reduce(g2, ACTIONS.sellStored({ storageUid: t2.uid }));
+  const expectRefund = Math.round(instrumentPrice(t2.inst) * SELL_REFUND_RATE * 100) / 100;
+  s.eq(sold.lab.storage.length, 0, '仓库卖出：条目移除');
+  s.near(sold.player.money - money2, expectRefund, 0.001, '仓库卖出退款 = 价格 × SELL_REFUND_RATE（' + expectRefund + ' 万）');
+  const sold0 = reduce(sold, ACTIONS.sellStored({ storageUid: t2.uid }));
+  s.eq(sold0.player.money, sold.player.money, '卖仓库里没有的仪器：不退款');
+  s.ok(Boolean(sold0.ui.toast), '卖不存在的仓库条目：给提示', String(sold0.ui.toast));
+
+  // ④ 没有 storage 字段的旧档：hydrate 不报错且 storage = []
+  const legacy = freshGame(mods, 'lab-storage-legacy');
+  delete legacy.lab.storage;
+  const hydrated = hydrate({ version: STATE_VERSION, savedAt: 1, state: legacy });
+  s.ok(hydrated !== null, '没有 storage 字段的旧档：hydrate 不报错');
+  s.eq(hydrated.lab.storage, [], '没有 storage 字段的旧档：storage 安全默认成 []');
+  s.eq(countEquipment(hydrated.lab), countEquipment(legacy.lab), '旧档补齐 storage 后台面计数不变');
+  // 脏仓库条目（未知仪器 / 缺 inst / null）一律丢弃，合法条目保留
+  const dirty = freshGame(mods, 'lab-storage-dirty');
+  dirty.lab.storage = [{ uid: 'i997', inst: 'bath' }, { uid: 'i998', inst: 'nope' }, { uid: 'i999' }, null];
+  const cleaned = hydrate({ version: STATE_VERSION, savedAt: 1, state: dirty });
+  s.eq(cleaned.lab.storage.map((x) => x.uid), ['i997'], '脏仓库条目被丢弃，合法条目保留');
 }
 
 s.finish();

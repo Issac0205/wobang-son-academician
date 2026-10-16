@@ -13,9 +13,9 @@ import { SAVE_SLOT_KEY, AUTOSAVE_ON_MONTH_END, CONSUME_MUL_SAVE_MIN, CONSUME_MUL
 import { STATE_VERSION, createState, createStudent, createProject, createOffer, createChronicleEntry } from './state.js';
 import { PAPER_TIER_ORDER, PLAYER_AUTHOR_ID } from '../data/papers.js';
 import { clamp, round } from './rng.js';
-import { layoutFromCounts, sanitizeRooms, countEquipment } from './lab.js';
+import { layoutFromCounts, sanitizeRooms, countEquipment, allBenches } from './lab.js';
 import { START_BENCHES } from '../data/lab.js';
-import { INSTRUMENT_IDS } from '../data/instruments.js';
+import { INSTRUMENT_IDS, INSTRUMENT_MAP } from '../data/instruments.js';
 
 /** @typedef {{version:number, savedAt:number, state:any}} SaveEnvelope */
 
@@ -170,6 +170,17 @@ export function validateState(rawState) {
     if (layout) { base.lab.rooms = layout.rooms; base.lab.nextUid = layout.nextUid; }
   }
   base.lab.equipment = countEquipment(base.lab);
+  // 1.3：仓库（lab.storage）。旧档没有该字段 → 安全默认成 []（不因此让读档失败）；
+  // 逐项校验：未知仪器 id / 非法 uid / 与台面重复的 uid 一律丢弃（重复 uid 会让 store/deploy 指错台）。
+  // 往返必须保留仓库内容，因此这里不能图省事清空。
+  const usedUids = new Set();
+  for (const { bench } of allBenches(base.lab)) {
+    usedUids.add(bench.uid);
+    for (const it of bench.items || []) usedUids.add(it.uid);
+  }
+  base.lab.storage = sanitizeStorage(lab.storage, usedUids);
+  // uid 流水号要覆盖仓库里的条目，否则以后新买的台/仪器会和仓库里的 uid 撞号。
+  for (const s of base.lab.storage) base.lab.nextUid = Math.max(base.lab.nextUid, uidNumber(s.uid));
   // t3（t4 暴露的 1.0 潜伏 bug）：下月耗材倍率是事件写进 lab 的，读档不恢复就会丢掉事件效果。
   base.lab.consumeMulThisMonth = round(num(lab.consumeMulThisMonth, CONSUME_MUL_DEFAULT, CONSUME_MUL_SAVE_MIN, CONSUME_MUL_SAVE_MAX), 3);
   for (const [id, months] of Object.entries(lab.equipmentDown || {})) {
@@ -269,6 +280,30 @@ export function validateState(rawState) {
     base.ui = { ...base.ui, ...pickUi(rawState.ui) };
   }
   return base;
+}
+
+/** uid 形如 'i12' / 'b3'：取数字部分，非法一律 0（与 core/lab.js 的 uidNum 同口径）。 */
+function uidNumber(uid) {
+  const n = Number(String(uid).slice(1));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * 1.3：仓库逐项校验（LAB-SPACE §11）。返回 [{ uid, inst }]；
+ * raw 不是数组（含旧档的 undefined）→ []，绝不抛异常。
+ * @param {any} raw 存档里的 lab.storage
+ * @param {Set<string>} usedUids 台面已经占用的 uid，仓库不得重复
+ */
+function sanitizeStorage(raw, usedUids) {
+  const seen = usedUids || new Set();
+  const out = [];
+  for (const s of Array.isArray(raw) ? raw : []) {
+    if (!s || typeof s !== 'object' || typeof s.uid !== 'string' || seen.has(s.uid)) continue;
+    if (!INSTRUMENT_MAP[s.inst]) continue;
+    seen.add(s.uid);
+    out.push({ uid: s.uid, inst: s.inst });
+  }
+  return out;
 }
 
 /** 月度回执的白名单校验：字段类型不对就丢，数组截断到合理长度。 */

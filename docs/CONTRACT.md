@@ -76,7 +76,8 @@ rankOf(i) 会把越界值夹到 1..8；任何地方都不要自己写 RANKS[i-1]
 
 ### 1.3 instruments.js —— 8 种仪器
 
-导出：INSTRUMENTS INSTRUMENT_MAP INSTRUMENT_IDS INST_PRICE_GROWTH INST_HOLD_CAP INST_BONUS_CAP
+导出：INSTRUMENTS INSTRUMENT_MAP INSTRUMENT_IDS INST_PRICE_GROWTH INST_HOLD_CAP
+（v1.3 起 INST_BONUS_CAP 已删除：仪器加成不再封顶）
 INST_COEF_BASE START_INST_BONUS TEMP_BROKEN_BONUS_MUL
 
     Instrument = { id, name, tier:'minor'|'major', tierLabel, bonus, initCount, price, maintain, tierGate, holdCap }

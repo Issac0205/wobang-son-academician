@@ -16,7 +16,7 @@ import {
 import { RANKS, rankOf, PROMOTE_INTEGRITY_BONUS, GOLDEN_AGE_MONEY_MUL, ELECTION_WINDOW_INTERVAL, TICKET_PER_T5, TICKET_PER_T6, TICKET_PER_PHD_GRADUATES, RECOMMEND_TICKET_REQ } from '../data/ranks.js';
 import { INSTRUMENTS, INSTRUMENT_MAP } from '../data/instruments.js';
 import { ROOMS, ROOM_MAX, BENCH_MAP, SELL_REFUND_RATE, LAB_TEXT } from '../data/lab.js';
-import { footprint, fits, findSpot, findBench, findItem, findEmptySlot, recountEquipment, newRoom } from './lab.js';
+import { footprint, fits, findSpot, findBench, findItem, findEmptySlot, recountEquipment, newRoom, findStorageItem } from './lab.js';
 import { PROJECTS, PROJECT_MAP, PROJECT_SLOTS, STUDENT_SLOTS, REFRESH_MONTHLY, LOCKABLE_SLOTS, TIER_LOOKAHEAD, PROJECT_OFFER_TTL_MONTHS, STUDENT_OFFER_TTL_MONTHS, MIN_ACCEPTABLE_PROJECT_OFFERS, NATION_PROJECT_RATIO, DEPOSIT_TO_CONSUMABLE, DEPOSIT_RATE, OVERDUE_GRACE_MONTHS, OVERDUE_INTEGRITY_PER_MONTH, OVERDUE_STUDENT_HAPPY, PROJECT_FAIL_INTEGRITY, PROJECT_FAIL_STUDENT_HAPPY } from '../data/projects.js';
 import { PAPER_PATTERNS, PAPER_TIER_ORDER, PAPER_PATTERN_ORDER, GRAB_FIRST_INTEGRITY, GRAB_FIRST_HAPPY, PAPER_BUY_PRICE, BUY_FIRST_INTEGRITY, GRAB_GRUDGE_MONTHS, MASTER_GRAD_PAPER, PHD_GRAD_PAPER, downgradeTier, PLAYER_AUTHOR_ID } from '../data/papers.js';
 import { HARDPOINT_METHODS, TEAM_MIN_STUDENTS, TEAM_MONEY, TEAM_STUDENT_HAPPY, TEAM_OTHER_PROJECT_MUL, FAKE_MONEY, FAKE_INTEGRITY, FAKE_STUDENT_HAPPY, FAKE_CAUGHT_INTEGRITY, FAKE_CAUGHT_PROGRESS_MUL, AUDIT_TRIGGER_FAKE_COUNT, AUDIT_MONTHLY_CHANCE, AUDIT_INTEGRITY, SOLO_MONEY, SOLO_STUDENT_HAPPY, SOLO_FAIL_HAPPY, MAX_PROJECTS_PER_STUDENT, PROJECT_MAX_STUDENTS, hardpointCount } from '../data/hardpoints.js';
@@ -58,6 +58,10 @@ export const ACTIONS = {
   buyInstrument: (payload) => ({ type: 'lab/buyInstrument', payload }),
   moveItem: (payload) => ({ type: 'lab/moveItem', payload }),
   sellItem: (payload) => ({ type: 'lab/sellItem', payload }),
+  // 1.3 仓库：台面 → 仓库 / 仓库 → 台面 / 仓库直接卖
+  storeItem: (payload) => ({ type: 'lab/storeItem', payload }),
+  deployItem: (payload) => ({ type: 'lab/deployItem', payload }),
+  sellStored: (payload) => ({ type: 'lab/sellStored', payload }),
   acceptProject: (payload) => ({ type: 'game/acceptProject', payload }),
   lockOffer: (payload) => ({ type: 'game/lockOffer', payload }),
   assignStudent: (payload) => ({ type: 'game/assignStudent', payload }),
@@ -118,6 +122,9 @@ export function reduce(state, action) {
     case 'lab/sellBench': return reduceSellBench(state, action.payload || {});
     case 'lab/moveItem': return reduceMoveItem(state, action.payload || {});
     case 'lab/sellItem': return reduceSellItem(state, action.payload || {});
+    case 'lab/storeItem': return reduceStoreItem(state, action.payload || {});
+    case 'lab/deployItem': return reduceDeployItem(state, action.payload || {});
+    case 'lab/sellStored': return reduceSellStored(state, action.payload || {});
     case 'game/acceptProject': return reduceAcceptProject(state, action.payload || {});
     case 'game/lockOffer': return reduceLockOffer(state, action.payload || {});
     case 'game/assignStudent': return reduceAssign(state, action.payload || {}, true);
@@ -1229,6 +1236,70 @@ function reduceSellItem(state, payload) {
   next.player.money = round(next.player.money + refund, 2);
   recountEquipment(next.lab);
   pushChronicle(next, { kind: 'lab', tone: 'system', text: '把一台' + def.name + '转给了兄弟课题组，回收 ' + refund + ' 万。' });
+  return next;
+}
+
+/* ── 1.3 仓库（LAB-SPACE §11）：台面 ⇄ 仓库；仓库里的仪器不给加成、不收维护费 ── */
+
+/** 失败一律「克隆 + toast」：不扣钱、不改 lab（只改 ui.toast），与既有 lab/* 动作同风格。 */
+function labReject(state, text) {
+  const next = cloneState(state);
+  next.ui.toast = text;
+  return next;
+}
+
+/** lab/storeItem { itemUid }：把台面上的某台仪器移入仓库；不在台面上则拒绝。 */
+function reduceStoreItem(state, payload) {
+  const found = findItem(state.lab, payload.itemUid);
+  if (!found) return labReject(state, LAB_TEXT.notOnBench);
+  const def = INSTRUMENT_MAP[found.item.inst];
+  if (!def) return state;
+  const next = cloneState(state);
+  const loc = findItem(next.lab, payload.itemUid);
+  loc.bench.items = loc.bench.items.filter((it) => it.uid !== loc.item.uid);
+  next.lab.storage.push({ uid: loc.item.uid, inst: loc.item.inst });
+  recountEquipment(next.lab);
+  pushChronicle(next, { kind: 'lab', tone: 'system', text: '把一台' + def.name + '收进仓库（不占台面，也不提供加成）。' });
+  return next;
+}
+
+/**
+ * lab/deployItem { storageUid, benchUid?, x?, y?, rot? }：从仓库取出摆到台面。
+ * 没给坐标时自动找第一个能放下的位置；放不下则拒绝，且**保持在仓库里**（不静默吞掉资产）。
+ */
+function reduceDeployItem(state, payload) {
+  const entry = findStorageItem(state.lab, payload.storageUid);
+  if (!entry) return labReject(state, LAB_TEXT.noStorageItem);
+  const def = INSTRUMENT_MAP[entry.inst];
+  if (!def) return state;
+  const next = cloneState(state);
+  const stored = findStorageItem(next.lab, payload.storageUid);
+  const spot = resolvePlacement(next.lab, stored.inst, payload, null);
+  if (spot.error) {
+    next.ui.toast = spot.error === LAB_TEXT.badSpot ? spot.error : LAB_TEXT.storageDeployFail;
+    return next;
+  }
+  const loc = findBench(next.lab, spot.benchUid);
+  loc.bench.items.push({ uid: stored.uid, inst: stored.inst, x: spot.x, y: spot.y, rot: spot.rot });
+  next.lab.storage = next.lab.storage.filter((s) => s.uid !== stored.uid);
+  recountEquipment(next.lab);
+  pushChronicle(next, { kind: 'lab', tone: 'good', text: loc.room.id + ' 从仓库取出一台' + def.name + '摆上了台面。' });
+  return next;
+}
+
+/** lab/sellStored { storageUid }：从仓库直接卖掉，退款与台面卖出同口径（SELL_REFUND_RATE）。 */
+function reduceSellStored(state, payload) {
+  const entry = findStorageItem(state.lab, payload.storageUid);
+  if (!entry) return labReject(state, LAB_TEXT.noStorageItem);
+  const def = INSTRUMENT_MAP[entry.inst];
+  if (!def) return state;
+  const next = cloneState(state);
+  const stored = findStorageItem(next.lab, payload.storageUid);
+  const refund = round(instrumentPrice(stored.inst) * SELL_REFUND_RATE, 2);
+  next.lab.storage = next.lab.storage.filter((s) => s.uid !== stored.uid);
+  next.player.money = round(next.player.money + refund, 2);
+  recountEquipment(next.lab);
+  pushChronicle(next, { kind: 'lab', tone: 'system', text: '把仓库里的' + def.name + '转给了兄弟课题组，回收 ' + refund + ' 万。' });
   return next;
 }
 

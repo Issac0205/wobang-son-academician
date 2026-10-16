@@ -5,7 +5,7 @@
  */
 
 import { RANKS, rankOf, MAX_RANK_INDEX } from '../data/ranks.js';
-import { INSTRUMENTS, INSTRUMENT_MAP, INST_BONUS_CAP } from '../data/instruments.js';
+import { INSTRUMENTS, INSTRUMENT_MAP } from '../data/instruments.js';
 import { ROOMS, ROOM_MAX, ROOM_SLOT_COLS, BENCHES, BENCH_MAP, SELL_REFUND_RATE, LAB_TEXT } from '../data/lab.js';
 import { findSpot, findEmptySlot, footprint, spaceSummary } from './lab.js';
 import { PROJECT_MAP, MARKET_SLOTS, PROJECT_SLOTS, STUDENT_SLOTS, REFRESH_MONTHLY, DEPOSIT_RATE } from '../data/projects.js';
@@ -310,16 +310,44 @@ export function selectLabSpace(state) {
 }
 
 export function selectLab(state) {
+  // 1.3：加成不再封顶 → 删掉 bonusCapPct / bonusCapped（没有「已封顶」这回事了）。
+  // bonusRawPct 保留为同值，纯为兼容旧调用方。
+  const bonusPct = Math.round(equipmentBonus(state.lab) * 100);
   return {
-    bonusPct: Math.round(equipmentBonus(state.lab) * 100),
-    // 上限与「已封顶」必须给到界面：第 9 台起加成恒为 0，界面不说清就是误导（用户实测反馈）。
-    bonusCapPct: Math.round(INST_BONUS_CAP * 100),
+    bonusPct,
     bonusRawPct: Math.round(equipmentBonusSum(state.lab) * 100),
-    bonusCapped: equipmentBonusSum(state.lab) >= INST_BONUS_CAP,
     maintain: maintenanceTotal(state.lab),
     equipment: selectEquipment(state),
+    storage: selectStorage(state),
     space: selectLabSpace(state),
   };
+}
+
+/**
+ * 1.3 仓库（LAB-SPACE §11）：只读元数据，UI 直接渲染。
+ * 仓库里的仪器**不提供加成、不收维护费**（口径见 core/lab.js 的 countEquipment）；
+ * 卖出退款与台面同口径（SELL_REFUND_RATE）。
+ */
+export function selectStorage(state) {
+  return (state.lab.storage || []).map((s) => {
+    const def = INSTRUMENT_MAP[s.inst];
+    if (!def) return null;
+    return {
+      uid: s.uid,
+      inst: s.inst,
+      name: def.name,
+      tier: def.tier,
+      tierLabel: def.tierLabel,
+      w: def.w,
+      h: def.h,
+      cells: def.w * def.h,
+      flavor: def.flavor || '',
+      bonusPct: Math.round(def.bonus * 100),
+      maintain: def.maintain,
+      down: (state.lab.equipmentDown[def.id] || 0) > 0,
+      sellRefund: Math.round(instrumentPrice(def.id) * SELL_REFUND_RATE * 100) / 100,
+    };
+  }).filter(Boolean);
 }
 
 export function selectMarket(state) {

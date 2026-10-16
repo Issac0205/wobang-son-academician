@@ -7,6 +7,7 @@
  */
 
 import { h, tag, button, uiCard, uiDisclosure, uiNote, uiInlineStat, uiNum1 } from '../dom.js';
+import { UI_STORAGE } from '../copy.js';
 
 const UI_LAB = {
   title: '实验室 · 空间台账',
@@ -15,6 +16,7 @@ const UI_LAB = {
   shopSub: '选择仪器查看价格与规格；拿起后点台面空格放置，或自动摆放。',
   holdBuy: '手上：待采购',
   holdMove: '手上：搬动中',
+  holdDeploy: UI_STORAGE.held,
   holdTip: '点选空格放置；可用下方按钮旋转或取消。桌面也支持 R / Esc。',
   emptySlot: '空台位',
   roomLocked: '尚未申请',
@@ -120,14 +122,17 @@ function uiNextRoom(space) {
 function uiHeldBar(vm, pick) {
   if (!pick) return null;
   const isMove = pick.mode === 'move';
-  return h('div', { class: 'held-bar' + (isMove ? ' is-move' : ''), dataset: { role: 'held-bar' } }, [
-    tag(isMove ? UI_LAB.holdMove : UI_LAB.holdBuy, isMove ? 'info' : 'warn'),
-    h('strong', { class: 'held-name', text: pick.name + (isMove ? '' : ' · ' + uiNum1(pick.price) + ' 万') }),
+  const isDeploy = pick.mode === 'deploy';        // 1.3：从仓库取出（拿在手上 → 点台位）
+  const held = isMove || isDeploy;
+  return h('div', { class: 'held-bar' + (held ? ' is-move' : ''), dataset: { role: 'held-bar' } }, [
+    tag(isMove ? UI_LAB.holdMove : (isDeploy ? UI_LAB.holdDeploy : UI_LAB.holdBuy), held ? 'info' : 'warn'),
+    h('strong', { class: 'held-name', text: pick.name + (pick.mode === 'buy' ? ' · ' + uiNum1(pick.price) + ' 万' : '') }),
     uiFootprint(pick.w, pick.h),
     h('span', { class: 'held-size', text: pick.w + '×' + pick.h }),
-    h('span', { class: 'held-tip', text: UI_LAB.holdTip }),
+    h('span', { class: 'held-tip', text: pick.mode === 'deploy' ? UI_STORAGE.heldTip : UI_LAB.holdTip }),
     h('span', { class: 'held-actions' }, [
       pick.w !== pick.h ? button('旋转', { action: 'lab-rotate' }, { class: 'btn-xs' }) : null,
+      isMove ? button(UI_STORAGE.store, { action: 'lab-store-item', uid: pick.uid }, { class: 'btn-xs', title: UI_STORAGE.storeTitle }) : null,
       isMove ? button('卖掉 +' + uiNum1(pick.refund) + ' 万', { action: 'lab-sell-item', uid: pick.uid }, { class: 'btn-xs btn-danger-ghost', title: '转给兄弟课题组，回收半价' }) : null,
       button('取消放置', { action: 'lab-cancel' }, { class: 'btn-ghost btn-xs' }),
     ]),
@@ -154,7 +159,7 @@ function uiShopCard(vm, pick) {
       ]),
       h('div', { class: 'shop-item-stats' }, [
         uiInlineStat('占格', e.w + '×' + e.h),
-        uiInlineStat('加成', lab.bonusCapped ? '+0%（已封顶）' : '+' + e.bonusPct + '%', lab.bonusCapped ? 'warn' : null),
+        uiInlineStat('加成', '+' + e.bonusPct + '%'),
         uiInlineStat('维护', uiNum1(e.maintain) + ' 万/月'),
       ]),
       e.flavor ? h('p', { class: 'shop-item-flavor', text: e.flavor }) : null,
@@ -173,13 +178,36 @@ function uiShopCard(vm, pick) {
   return uiCard(UI_LAB.shopTitle, UI_LAB.shopSub, null, [
     h('label', { class: 'catalog-select' }, [h('span', { text: '申购仪器 · 共 ' + lab.equipment.length + ' 种' }), select]),
     h('div', { class: 'shop-grid' }, rows),
-    uiNote(lab.bonusCapped
-      ? '仪器加成已经封顶（上限 ' + lab.bonusCapPct + '%）：再买仪器不会提高科研加成，但它仍可能满足项目的「设备要求」；维护费照收。'
-      : '大幅仪器贵但加成高；停机当月不提供加成。仪器没有持有上限，唯一的限制是台面空间；全仪器加成上限 ' + lab.bonusCapPct + '%。'),
+    uiNote('大幅仪器贵但加成高；停机当月不提供加成。仪器没有持有上限，唯一的限制是台面空间。'),
   ]);
 }
 
-/** 课题组 →「实验室」分栏：空间台账 + 申购目录。 */
+/**
+ * 1.3 仓库区块（LAB-SPACE §11）：列出仓库里的仪器，每台「取出 / 卖掉」。
+ * 取出只设置 app.js 的本地「拿在手上」状态（localUi.labPick），落位由 core 的 fits 判定；
+ * 这里不 import src/data / formulas，也绝不在 UI 里算规则。
+ */
+function uiStorageCard(vm) {
+  const list = vm.crew.lab.storage || [];
+  const rows = list.map((s) => h('div', { class: 'storage-row tone-' + s.tier, dataset: { role: 'storage-item', uid: s.uid } }, [
+    uiFootprint(s.w, s.h),
+    h('strong', { class: 'storage-name', text: s.name }),
+    tag(s.tierLabel, s.tier === 'major' ? 'good' : 'mute'),
+    uiInlineStat(UI_STORAGE.cells, s.w + '×' + s.h),
+    uiInlineStat(UI_STORAGE.bonus, '+' + s.bonusPct + '%'),
+    h('span', { class: 'storage-actions' }, [
+      button(UI_STORAGE.take, { action: 'lab-deploy-item', storageUid: s.uid }, { class: 'btn-xs', title: UI_STORAGE.takeTitle }),
+      button(UI_STORAGE.sell + ' +' + uiNum1(s.sellRefund) + ' 万', { action: 'lab-sell-stored', storageUid: s.uid }, { class: 'btn-xs btn-danger-ghost', title: UI_STORAGE.sellTitle }),
+    ]),
+    s.flavor ? h('span', { class: 'storage-flavor', text: s.flavor }) : null,
+  ]));
+  return uiCard(UI_STORAGE.title, UI_STORAGE.subtitle, null, [
+    rows.length ? h('div', { class: 'storage-list' }, rows) : h('p', { class: 'muted', text: UI_STORAGE.empty }),
+    uiNote(UI_STORAGE.rule),
+  ]);
+}
+
+/** 课题组 →「实验室」分栏：空间台账 + 仓库 + 申购目录。 */
 export function renderLabSpace(vm, ctx) {
   const lab = vm.crew.lab;
   const space = lab.space;
@@ -189,12 +217,14 @@ export function renderLabSpace(vm, ctx) {
     uiInlineStat('实验室', sum.rooms + ' / ' + sum.roomMax + ' 间'),
     uiInlineStat('实验台', sum.benches + ' 张 · 空台位 ' + sum.slotsFree),
     uiInlineStat('台面格子', sum.used + ' / ' + sum.cells, sum.free <= 1 ? 'warn' : null),
-    uiInlineStat('全仪器加成', lab.bonusPct + '%' + (lab.bonusCapped ? '（已封顶）' : '（上限 ' + lab.bonusCapPct + '%）'), lab.bonusCapped ? 'warn' : null),
+    uiInlineStat('全仪器加成', lab.bonusPct + '%'),
     uiInlineStat('每月维护', uiNum1(lab.maintain) + ' 万'),
+    uiInlineStat('仓库', (lab.storage || []).length + ' 台'),
   ]);
   const rooms = h('div', { class: 'rooms' }, space.rooms.map((r) => uiRoom(r, space, pick)).concat([uiNextRoom(space)]));
   return [
     uiCard(UI_LAB.title, UI_LAB.subtitle, null, [head, uiHeldBar(vm, pick), rooms], { class: 'card-lab' + (pick ? ' is-holding' : '') }),
+    uiStorageCard(vm),
     uiShopCard(vm, pick),
   ];
 }

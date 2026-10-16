@@ -61,6 +61,27 @@ export const UI_EMPTY = {
   active: '名下没有在读学生。招人——这是唯一能把项目推起来的办法。',
 };
 
+/**
+ * 1.3 仓库（LAB-SPACE §11）：静态文案，数字（占格/加成/退款）全部来自 vm.crew.lab.storage。
+ * 口径必须写死在这里、不许含糊：仓库里的仪器**不提供加成、不收维护费**。
+ */
+export const UI_STORAGE = {
+  title: '仓库',
+  subtitle: '闲置仪器先收进来，腾出台面重新排布局；要用的时候再取出来摆上台。',
+  empty: '仓库是空的。台面上的仪器可以「存入仓库」，先腾出格子再重排布局。',
+  rule: '仓库里的仪器不提供加成、不收维护费——它们只是放在那里，不参与任何科研计算。',
+  take: '取出',
+  takeTitle: '取出后拿在手上，再点台面空格放下',
+  sell: '卖掉',
+  sellTitle: '与台面卖出同口径：回收半价',
+  store: '存入仓库',
+  storeTitle: '把台上这台仪器收进仓库，腾出格子',
+  held: '手上：仓库取出',
+  heldTip: '点选台面空格放置；可用下方按钮旋转或取消。桌面也支持 R / Esc。',
+  cells: '占格',
+  bonus: '加成',
+};
+
 /** 一键分配工作（t25/t26）：数字与文案里的每个数都来自 vm.autoAssign，UI 只排版不推导。 */
 export const UI_AUTO_ASSIGN = {
   button: '一键分配工作',

@@ -327,12 +327,12 @@ canPromoteTo(r) =
 ### 4.3 科研进度加成系数
 
 ```
-仪器加成 bonus = min( Σ(每种仪器台数 × 单台加成), INST_BONUS_CAP = 0.90 )
-仪器系数 instCoef = 1 + bonus            // 取值范围 [1.00, 1.90]
+仪器加成 bonus = Σ(每种仪器台数 × 单台加成)   // v1.3 起不再封顶
+仪器系数 instCoef = 1 + bonus            // 取值范围 [1.00, +∞)：堆仪器只看台面空间与维护费
 ```
 
 - 开局持有量对应的 bonus = 0.06×1(离心机) + 0.06×1(摇床) + 0.15×1(液相) + 0.06×2(超净台) + 0.06×1(水浴锅) = **0.45**，即 `instCoef = 1.45`。
-- 全 8 种各 3 台的裸加成 = 2.52，被 `INST_BONUS_CAP = 0.90` 截断，即**仪器最多让科研速度翻 1.9 倍**。
+- v1.3（用户反馈）：删掉 `INST_BONUS_CAP`，加成**不再封顶**。全 8 种各 3 台的裸加成 = 2.52，就是 2.52——仪器的唯一约束是台面空间、维护费与售价。
 - 仪器维护费每月结算；**停机事件**（§10）会让某台仪器当月加成交互为 0。
 
 ### 4.4 作为项目承接门槛的判定规则
@@ -407,7 +407,7 @@ P(student) = BASE_PROGRESS(6.0)
            × abilityCoef         = student.ability / 0.5            // 0.60 – 1.90
            × happyCoef           = 0.6 + 0.004 × student.happiness  // 0.60 – 1.00
            × consumeCoef         = {挥霍 1.15, 正常 1.00, 收紧 0.85}
-           × instCoef            = 1 + min(Σ仪器加成, 0.90)
+           × instCoef            = 1 + Σ仪器加成        // v1.3 起无封顶
            × hardPointPenalty    = 1 − 0.25 × max(未解决难点 hd)      // 0.25 – 1.00
 ```
 
@@ -820,7 +820,7 @@ degHappyCoef = happiness < 30 ? 0.50 : (0.6 + 0.004 × happiness)
 
 | 文件 | 内容 | 主要常量 |
 |---|---|---|
-| `src/data/tuning.js` | 全局常量 | `INITIAL_MONEY`、`ENERGY_*`、`HEALTH_*`、`INTEGRITY_*`、`BASE_PROGRESS`、`INST_BONUS_CAP`、`CONSUME_MODE_COEF` 等 |
+| `src/data/tuning.js` | 全局常量 | `INITIAL_MONEY`、`ENERGY_*`、`HEALTH_*`、`INTEGRITY_*`、`BASE_PROGRESS`、`CONSUME_MODE_COEF` 等 |
 | `src/data/ranks.js` | 八级头衔阶梯 | `RANKS`（含全部晋升门槛、上限、年投资、黄金年龄） |
 | `src/data/instruments.js` | 8 种仪器 | `INSTRUMENTS`、`INST_PRICE_GROWTH`、`INST_HOLD_CAP` |
 | `src/data/projects.js` | 10 种项目模板 + 生成规则 | `PROJECTS`（含 W / lim / money / depositRate / consumable / papers / require / tier）、`MARKET_SLOTS`、`REFRESH_MONTHLY` |

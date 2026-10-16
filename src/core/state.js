@@ -192,6 +192,8 @@ export function createState(opts = {}) {
       // equipment 是派生计数（由摆放重算），加成仍 = START_INST_BONUS（0.45）。
       ...startingLayout(),
       equipment: Object.fromEntries(INSTRUMENTS.map((it) => [it.id, it.initCount])),
+      // 1.3：仓库（不占台面、不提供加成、不收维护费）；开局为空。
+      storage: [],
       equipmentDown: Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0])),
       purchaseCount: Object.fromEntries(INSTRUMENTS.map((it) => [it.id, 0])),
       consumeMulThisMonth: 1,

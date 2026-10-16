@@ -204,6 +204,36 @@ try {
       if (section === 'instruments') {
         const buys = findAllByAction($('panel-lab'), 'buy-equipment');
         check(buys.length === INSTRUMENTS.length, '仪器台渲染全部仪器（' + INSTRUMENTS.length + ' 种，各带购买价/维护费/加成说明）', '仪器数量不对：' + buys.length);
+
+        /* ── 4b v1.3 仓库（LAB-SPACE §11）：空态 → 存入 → 取出（走「拿在手上→点台位」流程） ── */
+        const labText = panelText('panel-lab');
+        check(labText.indexOf('仓库是空的') >= 0, '仓库为空时显示诚实的空态', '仓库空态缺失');
+        check(labText.indexOf('仓库里的仪器不提供加成、不收维护费') >= 0,
+          '仓库区块常驻写明「仓库里的仪器不提供加成、不收维护费」', '仓库没有写明不提供加成/不收维护费');
+        const placedItems = store.getState().lab.rooms.flatMap((r) => r.slots).filter(Boolean).flatMap((b) => b.items);
+        const picked = placedItems[0];
+        const srcBench = store.getState().lab.rooms.flatMap((r) => r.slots).filter(Boolean)
+          .find((b) => b.items.some((it) => it.uid === picked.uid));
+        const bonusBefore = vmNow().crew.lab.bonusPct;
+        const moneyBefore = store.getState().player.money;
+        store.dispatch({ type: 'lab/storeItem', payload: { itemUid: picked.uid } });
+        check(findAllByAction($('panel-lab'), 'lab-deploy-item').length === 1, '存入后仓库行渲染出「取出」按钮', '仓库没有渲染「取出」');
+        check(findAllByAction($('panel-lab'), 'lab-sell-stored').length === 1, '存入后仓库行渲染出「卖掉」按钮', '仓库没有渲染「卖掉」');
+        check(vmNow().crew.lab.bonusPct < bonusBefore, '存入仓库后视图加成下降（' + bonusBefore + '% → ' + vmNow().crew.lab.bonusPct + '%）', '仓库里的仪器仍然提供加成');
+        check(store.getState().player.money === moneyBefore, '存入仓库不是卖出：钱不变', '存入仓库动了钱');
+        // 取出：点「取出」进入拿在手上流程，再点台面空位放回原处
+        const takeBtn = findByAction($('panel-lab'), 'lab-deploy-item');
+        takeBtn.click();
+        let heldBar = null;
+        walk($('panel-lab'), (n) => { if (!heldBar && n.dataset && n.dataset.role === 'held-bar') heldBar = n; });
+        check(Boolean(heldBar) && textOf(heldBar).indexOf('手上：仓库取出') >= 0,
+          '点「取出」进入「拿在手上 → 点台位」放置流程', '取出没有进入放置流程：' + textOf(heldBar));
+        const cell = findAllByAction($('panel-lab'), 'lab-cell').filter((n) => n.parentNode && n.parentNode.dataset
+          && n.parentNode.dataset.benchUid === srcBench.uid && Number(n.dataset.x) === picked.x && Number(n.dataset.y) === picked.y)[0];
+        check(Boolean(cell), '取出的仪器原位置仍是可点的台面格子', '找不到原位置的格子');
+        if (cell) cell.click();
+        check(findAllByAction($('panel-lab'), 'lab-deploy-item').length === 0, '点台位后仪器真的从仓库取出', '取出后台面没有拿到仪器');
+        check(vmNow().crew.lab.bonusPct === bonusBefore, '取出放回后加成恢复原值（' + bonusBefore + '%）', '取出后加成没有恢复');
       }
       if (section === 'consumables') {
         const modes = findAllByAction($('panel-lab'), 'consume-mode');
