@@ -609,6 +609,28 @@ button { font: inherit; color: inherit; }
 .help-title { font-family: var(--font-title); font-size: var(--fs-lg); color: var(--seal-deep); }
 .help-text { font-size: var(--fs-sm); color: var(--ink); line-height: 1.75; }
 
+/* ── v1.5.0 游戏内百科（帮助弹层内，10 章） ──
+   窄屏防溢出口径：每一层网格都用 minmax(0, …)，文本 overflow-wrap:anywhere，
+   .wiki-* 里不出现任何固定 min-width —— 375px 手机宽度不得横向滚动。 */
+.wiki { display: grid; gap: var(--sp-4); min-width: 0; }
+.wiki-head { display: grid; gap: 2px; min-width: 0; }
+.wiki-title { font-family: var(--font-title); font-size: var(--fs-xl); color: var(--seal-deep); }
+.wiki-sub { font-size: var(--fs-sm); color: var(--ink-soft); line-height: 1.7; }
+.wiki-index { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-2); min-width: 0; }
+.wiki-index-chip { font-size: var(--fs-xs); color: var(--ink-soft); border: 1px solid var(--line); border-radius: var(--r-2); padding: 2px var(--sp-2); }
+.wiki-body { display: grid; gap: var(--sp-4); min-width: 0; }
+.wiki-chapter { display: grid; gap: var(--sp-2); min-width: 0; padding-top: var(--sp-2); border-top: 1px solid var(--line); }
+.wiki-chapter-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); min-width: 0; }
+.wiki-chapter-no { font-size: var(--fs-xs); color: var(--ink-faint); letter-spacing: 0.1em; }
+.wiki-chapter-name { font-family: var(--font-title); font-size: var(--fs-lg); color: var(--seal-deep); }
+.wiki-intro { font-size: var(--fs-sm); color: var(--ink-soft); line-height: 1.75; overflow-wrap: anywhere; }
+.wiki-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; min-width: 0; }
+.wiki-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--sp-1) var(--sp-2); padding: var(--sp-1) 0; border-bottom: 1px dotted var(--line); min-width: 0; }
+.wiki-k { font-size: var(--fs-sm); color: var(--ink); min-width: 0; overflow-wrap: anywhere; }
+.wiki-v { font-family: var(--font-num); color: var(--ink-strong); text-align: right; overflow-wrap: anywhere; }
+.wiki-note { grid-column: 1 / -1; font-size: var(--fs-xs); color: var(--ink-faint); line-height: 1.6; overflow-wrap: anywhere; }
+.wiki-foot { font-size: var(--fs-xs); color: var(--ink-faint); line-height: 1.6; }
+
 /* ── 结局画面 ── */
 .end-text { font-family: var(--font-title); font-size: var(--fs-lg); line-height: 1.9; padding: var(--sp-4); background: var(--paper-sunken); border-left: 4px solid var(--seal); border-radius: 0 var(--r-2) var(--r-2) 0; }
 .end-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-2) var(--sp-4); }
@@ -886,3 +908,11 @@ button:active { filter:brightness(.94); }
  #toast-root { max-width:calc(100vw - 24px); bottom:calc(12px + env(safe-area-inset-bottom)); }
 }
 @media (prefers-reduced-motion:reduce) { *, *::before, *::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; } }
+
+/* v1.5.0 百科：手机宽度下标签与数字各占一行，避免长词条把弹层撑出横向滚动 */
+@media (max-width: 600px) {
+  .wiki-row { grid-template-columns: minmax(0, 1fr); }
+  .wiki-v { text-align: left; }
+  .wiki-index-chip { font-size: var(--fs-xs); }
+}
+

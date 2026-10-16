@@ -232,6 +232,7 @@ export function buildSkeleton(html) {
 
   // 顶栏按钮：与 index.html 一致的 data-action（事件代理用）
   const buttonActions = {
+    'btn-help': 'help',
     'btn-next-month': 'next-month',
     'btn-save': 'save',
     'btn-export': 'export',

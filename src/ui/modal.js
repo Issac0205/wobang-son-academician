@@ -6,8 +6,9 @@
  */
 
 import { $, h, mount, clear, button, tag, uiNum1, uiDeltaText } from './dom.js';
-import { UI_RNAME, UI_RESET, UI_HELP_SECTIONS, UI_DEFER, UI_RESIGN } from './copy.js';
+import { UI_RNAME, UI_RESET, UI_HELP_SECTIONS, UI_WIKI, UI_DEFER, UI_RESIGN } from './copy.js';
 import { renderReceiptDetail } from './receipt.js';
+import { uiWikiView } from './views/wiki.js';
 
 /** 改名输入框的引用（DOM shim 里 querySelector 也能找到，但这里留一份引用更稳）。 */
 let uiRenameRefs = { name: null, son: null };
@@ -98,13 +99,19 @@ function uiRenameModal(vm) {
   return uiModalShell(UI_RNAME.title, '署名会出现在纪事、结题报告和结局里', 'plain', body, actions);
 }
 
-function uiHelpModal() {
+/**
+ * 帮助弹层 = 新手说明 + 游戏内百科（v1.5.0）。
+ * 百科放在既有弹层里，不新增第 6 个标签页；数字全部来自 vm.consts.wiki。
+ */
+function uiHelpModal(vm) {
   const body = UI_HELP_SECTIONS.map((s) => h('div', { class: 'help-block' }, [
     h('h3', { class: 'help-title', text: s.title }),
     h('p', { class: 'help-text', text: s.text }),
   ]));
+  const wiki = uiWikiView(vm && vm.consts ? vm.consts.wiki : null);
+  if (wiki) body.push(wiki);
   const actions = [button('知道了，开始干', { action: 'modal-close' }, { kind: 'primary' })];
-  return uiModalShell('怎么玩（一页看完）', '任何时候都能从顶栏「玩法」再打开', 'info', body, actions);
+  return uiModalShell(UI_WIKI.entry, '任何时候都能从顶栏「玩法」再打开', 'info', body, actions);
 }
 
 function uiResetModal() {
@@ -181,7 +188,7 @@ export function renderModal(vm, localUi) {
   clear(root);
   let node = null;
   if (vm.ending && !ui.hideEnding) node = uiEndingScreen(vm);
-  else if (localKind === 'help') node = uiHelpModal();
+  else if (localKind === 'help') node = uiHelpModal(vm);
   else if (localKind === 'rename') node = uiRenameModal(vm);
   else if (localKind === 'receipt') node = uiModalShell('结算明细', null, 'plain', renderReceiptDetail(vm, vm.receipt), [button('知道了', { action: 'modal-close' }, { kind: 'primary' })]);
   else if (localKind === 'reset') node = uiResetModal();

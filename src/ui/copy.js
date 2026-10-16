@@ -163,6 +163,18 @@ export const UI_HELP_SECTIONS = [
   { title: '素材与授权', text: '界面图标部分取自 Lucide（ISC 许可证），已随分发包内联；页面字体用系统字体，运行时不请求任何外部资源。完整素材清单与许可证全文见 docs/ASSETS.md。' },
 ];
 
+/**
+ * 游戏内百科（v1.5.0）：这里只放「字」不放「数」——词条数字全部来自 vm.consts.wiki
+ * （src/core/selectors.js 的 selectWiki() 从 src/data 组装），本文件不出现任何游戏数值。
+ */
+export const UI_WIKI = {
+  entry: '怎么玩 · 游戏内百科',
+  title: '游戏内百科',
+  subtitle: '十章，把每一处数值都摊开写明；这一页的数字全部读自 core 的数据表，改一处就会跟着变。',
+  chapterOf: '第 {no} 章',
+  footnote: '本页每个数字都由 core 从 src/data 取出后交给 UI 排版，并由 scripts/ui-smoke.mjs 与 data 常量逐项对账。',
+};
+
 /** 纪事筛选分组：按 core 写入的 kind 归类。 */
 export const UI_CHRONICLE_FILTERS = [
   { id: 'all', label: '全部', kinds: null },

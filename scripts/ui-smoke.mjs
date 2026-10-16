@@ -17,6 +17,11 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { installDomShim, installLocalStorage } from './lib/dom-shim.mjs';
 import { INSTRUMENTS } from '../src/data/instruments.js';
+import { INTEGRITY_DELTA, INTEGRITY_MIN, INTEGRITY_MAX, INITIAL_INTEGRITY, INITIAL_MONEY, CONSUMABLE_PRICE_PER_UNIT } from '../src/data/tuning.js';
+import { GRAB_FIRST_HAPPY, PAPER_BUY_PRICE, JOURNAL_IF_BASE } from '../src/data/papers.js';
+import { PLAYER_LEAD_MUL, PLAYER_LEAD_ENERGY_COST, PROJECT_MAX_STUDENTS, MAX_PROJECTS_PER_STUDENT } from '../src/data/hardpoints.js';
+import { DEPOSIT_RATE } from '../src/data/projects.js';
+import { MIN_ACADEMICIAN_AGE, RECOMMEND_TICKET_REQ, TICKET_VISIT_COST } from '../src/data/ranks.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const checks = [];
@@ -705,6 +710,136 @@ try {
     /* ── 18 UI 不应该有未注册动作的告警 ── */
     const uiWarnings = warnings.filter((w) => w.indexOf('[ui]') >= 0);
     check(uiWarnings.length === 0, '整个流程没有出现「未注册的 data-action」告警', 'UI 告警：' + uiWarnings.join(' | '));
+
+    /* ── 19 游戏内百科（v1.5.0）：10 章 + 数字防漂移 ──
+     * 硬约束③：百科渲染出的关键数字必须与 core 常量逐项一致。这条断言两面夹：
+     *   (a) 页面 [data-wiki-key] 的词条值 == src/data 里的真值（本文件直接 import 取）；
+     *   (b) 页面词条值 == 下面的「规格字面量」表（独立于实现写死，改 core 而不改口径就红）。
+     * 负向对照（本轮验收实做）：把 src/data/tuning.js 的 grabFirst 改成 −5、百科一行不动 →
+     * 这条断言（以及 §12 的抢一作断言）变红；改回 −8 → 回绿。 */
+    {
+      /* §15 之后可能还挂着一个结局弹层（结局优先级高于本地弹层）：先回到干净的一局 */
+      if (typeof game.createState === 'function') {
+        replaceState(game.createState({ seed: 'ui-smoke-wiki', playerName: '马老板', sonName: '马小程' }));
+      }
+      const helpOpened = clickAction('help');
+      check(Boolean(helpOpened) && textOf($('modal-root')).indexOf('游戏内百科') >= 0,
+        '顶栏「玩法」打开既有帮助弹层，游戏内百科就渲染在这个弹层里（没有新增标签页）',
+        '帮助弹层里没有百科：' + textOf($('modal-root')).slice(0, 60));
+
+      const wikiRows = {};
+      const chapterIds = [];
+      walk($('modal-root'), (n) => {
+        if (n.dataset && n.dataset.wikiKey) wikiRows[n.dataset.wikiKey] = n;
+        if (n.dataset && n.dataset.wikiChapter) chapterIds.push(n.dataset.wikiChapter);
+      });
+      const valueOf = (key) => {
+        const row = wikiRows[key];
+        if (!row) return null;
+        const hit = (row.children || []).filter((c) => String(c.className || '').split(/\s+/).includes('wiki-v'))[0];
+        return hit ? String(hit.textContent || '') : null;
+      };
+
+      check(chapterIds.length === 10, '百科渲染出 10 章：' + chapterIds.join(' / '), '百科章节数不是 10：' + chapterIds.length);
+      const rowCount = Object.keys(wikiRows).length;
+      check(rowCount >= 120, '百科词条 ' + rowCount + ' 条（每章都带真实数字，不是「较多/少量」）', '百科词条太少：' + rowCount);
+      const emptyRows = Object.keys(wikiRows).filter((k) => !valueOf(k) || valueOf(k) === '—');
+      check(emptyRows.length === 0, '所有词条都从 core 取到了值（没有被兜底成 —）', '这些词条没有值：' + emptyRows.join('、'));
+
+      /* (a) 页面 == core 常量：诚信总表逐项 */
+      const delta = (n) => (Number(n) > 0 ? '+' + Number(n) : (Number(n) < 0 ? '−' + Math.abs(Number(n)) : '0'));
+      const integrityKeys = Object.keys(INTEGRITY_DELTA);
+      const coreMismatch = integrityKeys.filter((k) => valueOf('integrity.' + k) !== delta(INTEGRITY_DELTA[k]));
+      check(integrityKeys.length === 15 && coreMismatch.length === 0,
+        '诚信总表 ' + integrityKeys.length + ' 项逐项一致：页面上「抢一作 −8」等数字 == core 的 INTEGRITY_DELTA（' + delta(INTEGRITY_DELTA.grabFirst) + '/' + delta(INTEGRITY_DELTA.buyFirst) + '…）',
+        '百科数字与 INTEGRITY_DELTA 不一致：' + coreMismatch.map((k) => k + ' 页面=' + valueOf('integrity.' + k) + ' core=' + delta(INTEGRITY_DELTA[k])).join('；'));
+
+      const coreCases = [
+        ['integrity.initial', String(INITIAL_INTEGRITY)],
+        ['integrity.range', INTEGRITY_MIN + ' – ' + INTEGRITY_MAX],
+        ['money.initial', INITIAL_MONEY + ' 万'],
+        ['money.depositNation', Math.round(DEPOSIT_RATE.nation * 100) + '%'],
+        ['money.depositEnterprise', Math.round(DEPOSIT_RATE.enterprise * 100) + '%'],
+        ['money.consumableUnit', CONSUMABLE_PRICE_PER_UNIT + ' 单位 = ' + CONSUMABLE_PRICE_PER_UNIT + ' 万'],
+        ['firstAuthor.lead', '项目推进 ×' + PLAYER_LEAD_MUL + ' · 每月多 ' + PLAYER_LEAD_ENERGY_COST + ' 点精力'],
+        ['firstAuthor.grab', '诚信 ' + delta(INTEGRITY_DELTA.grabFirst) + ' · 该生幸福 ' + delta(GRAB_FIRST_HAPPY)],
+        ['firstAuthor.buy.q1', PAPER_BUY_PRICE.q1 + ' 万'],
+        ['firstAuthor.buy.top', PAPER_BUY_PRICE.top + ' 万'],
+        ['firstAuthor.if.top', String(JOURNAL_IF_BASE.top)],
+        ['projects.maxStudents', PROJECT_MAX_STUDENTS + ' 人'],
+        ['projects.maxPerStudent', MAX_PROJECTS_PER_STUDENT + ' 个项目'],
+        ['rank.academician.age', '≥ ' + MIN_ACADEMICIAN_AGE + ' 岁'],
+        ['rank.academician.ticket', RECOMMEND_TICKET_REQ + ' 张'],
+        ['rank.ticket.visit', TICKET_VISIT_COST + ' 万/次'],
+      ];
+      const caseBad = coreCases.filter(([k, want]) => valueOf(k) !== want);
+      check(caseBad.length === 0, '百科 ' + coreCases.length + ' 条逐项对账通过（页面 == src/data 真值）',
+        '页面与 core 常量对不上：' + caseBad.map(([k, want]) => k + ' 页面=' + valueOf(k) + ' core=' + want).join('；'));
+
+      /* (b) 页面 == 规格字面量（独立于实现，专门用来抓「改了数值没改口径」） */
+      const WIKI_SPEC = {
+        'integrity.grabFirst': '−8',
+        'integrity.buyFirst': '−4',
+        'integrity.fake': '−10',
+        'integrity.fakeCaught': '−25',
+        'integrity.divert': '−3',
+        'integrity.audit': '−15',
+        'integrity.extreme': '−50',
+        'integrity.finishProject': '+2',
+        'integrity.finishEnterprise': '+1',
+        'integrity.graduate': '+3',
+        'integrity.promote': '+2',
+        'integrity.noWage': '−2',
+        'integrity.overdue': '−1',
+        'integrity.projectFail': '−5',
+        'integrity.giveUpStudent': '−2',
+        'integrity.initial': '100',
+        'integrity.range': '0 – 100',
+        'money.initial': '200 万',
+        'money.depositNation': '30%',
+        'money.depositEnterprise': '40%',
+        'money.consumableUnit': '1 单位 = 1 万',
+        'firstAuthor.grab': '诚信 −8 · 该生幸福 −30',
+        'firstAuthor.buy.q1': '25 万',
+        'firstAuthor.buy.top': '120 万',
+        'firstAuthor.if.top': '45',
+        'firstAuthor.if.q1': '10',
+        'rank.academician.age': '≥ 45 岁',
+        'rank.academician.ticket': '3 张',
+        'rank.ticket.visit': '8 万/次',
+        'projects.maxStudents': '6 人',
+        'projects.maxPerStudent': '3 个项目',
+        'market.season': '每年 6–12 月',
+        'market.perMonth': '2 人',
+        'ending.academician': '头衔升到第 8 级',
+        'ending.count': '8 个',
+      };
+      const specKeys = Object.keys(WIKI_SPEC);
+      const specBad = specKeys.filter((k) => valueOf(k) !== WIKI_SPEC[k]);
+      check(specBad.length === 0, '百科 ' + specKeys.length + ' 条关键数字与规格口径逐字一致（含「抢一作 −8」「买一作 −4」）',
+        '与规格口径不一致：' + specBad.map((k) => k + ' 页面=' + valueOf(k) + ' 期望=' + WIKI_SPEC[k]).join('；'));
+
+      const grabRowText = wikiRows['firstAuthor.grab'] ? String(wikiRows['firstAuthor.grab'].textContent) : '';
+      check(grabRowText.indexOf('抢学生的一作') >= 0 && grabRowText.indexOf('诚信 −8') >= 0,
+        '页面上「抢学生的一作 … 诚信 −8」同一条词条内可核对', '页面上没有「抢一作 −8」这一行：' + grabRowText.slice(0, 60));
+
+      /* 硬约束① 的静态守卫：百科视图源码里不许有数字字符 */
+      const wikiSrc = readFileSync(join(ROOT, 'src', 'ui', 'views', 'wiki.js'), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1 ');
+      // 允许 HTML 标签名里的数字（h3），其余数字字符一个都不许有
+      const digitHit = wikiSrc.replace(/h[1-6]/g, '').match(/[0-9]/g) || [];
+      check(digitHit.length === 0, '百科视图源码里除 HTML 标签名外没有数字字符（数字全部经 viewmodel 传入）', 'wiki.js 里出现数字字面量 ' + digitHit.length + ' 处');
+
+      /* 375px 防溢出的静态守卫：百科样式不出现固定 px 最小宽度 */
+      const wikiRules = css.match(/\.wiki[\w.\- ]*\{[^}]*\}/g) || [];
+      const fixedWidth = wikiRules.filter((r) => /min-width:\s*[1-9]/.test(r));
+      check(wikiRules.length >= 8 && fixedWidth.length === 0,
+        '百科样式 ' + wikiRules.length + ' 条规则、没有固定 px 最小宽度（375px 手机宽度不横向溢出）',
+        '百科样式里出现固定 px 最小宽度：' + fixedWidth.join(' '));
+
+      clickAction('modal-close');
+      check(textOf($('modal-root')).length === 0, '百科弹层能正常关掉', '百科弹层关不掉');
+    }
   }
 } catch (err) {
   fail('冒烟过程中抛异常：' + (err && err.stack ? err.stack.split(String.fromCharCode(10)).slice(0, 8).join(' | ') : err));

@@ -177,6 +177,41 @@ t16 存档白名单 / negativeMoneyMonths 持久化、t22 项目刷新与招生�
   `scripts/build-single.mjs`、`scripts/asset-audit.mjs`。
 - `STATE_VERSION` 不变（= 3）：`market.rareHired` 是向后兼容的新增字段，旧档安全默认成 `[]`。
 
+## 1.5.0 — 游戏内百科（2026-10-17，用户 SPEC：_probe/wiki-1.5-spec.md）
+
+### 玩法
+- **百科进既有帮助弹层**：顶栏「玩法」打开的弹层里，新手说明之后接一整本「游戏内百科」，
+  带 10 章目录（1 经费来源 / 2 诚信值 / 3 晋升门槛 / 4 一作三途径 / 5 学生 / 6 实验室空间 /
+  7 项目与难点 / 8 人才市场 / 9 行动·精力·健康 / 10 结局）。
+  **没有新增第 6 个标签页**：index.html 仍是 5 项导航，百科只渲染进 #modal-root。
+- **每章都带真实数字，不用「较多/少量」**：193 条词条，全部是数值或由数值拼出的句子
+  （例：抢一作 −8 / 买一作 −4 / 造假被抓 −25 / 院士门槛 1400 IF + 3 张推荐票 + ≥45 岁 /
+  学生月进度 6 × (能力 ÷ 0.5) × 幸福系数 ÷ 在研项目数 × 耗材倍率 × (1 + 仪器加成)）。
+
+### 硬约束落实（SPEC 三条）
+1. **数字只有一个来源**：新增 selectors.js 的 selectWiki()（挂在 selectUiConstants().wiki，
+   经 buildViewModel().consts.wiki 到 UI），全部数值从 src/data/** 取、在 core 里拼成词条；
+   src/ui/views/wiki.js 只排版 —— ui-smoke 断言该文件去掉注释后除 HTML 标签名外不含任何数字字符。
+   原有静态门禁照旧：UI 层不 import src/data / core/formulas、UI 里没有倍率公式。
+2. **不新增标签页 + 375px 不横向溢出**：手机断点下词条改为上下两行（.wiki-row 单列），
+   实测 375px 视口 documentElement.scrollWidth = 375、.modal 的 scrollWidth === clientWidth、
+   193 行词条一行都没超出右边界（证据 artifacts/verification/wiki-shots.mjs 的报告与截图）。
+3. **防漂移断言**：scripts/ui-smoke.mjs §19 用 [data-wiki-key] 契约两面夹 ——
+   (a) 页面上「抢一作 −8」等 15 项诚信变化逐项等于 INTEGRITY_DELTA，另有 16 条与 data 真值逐项对账；
+   (b) 35 条关键数字与独立写死的「规格字面量」表逐字一致。
+   **负向对照（已实做）**：把 src/data/tuning.js 的 grabFirst 临时改成 −5、百科一行不动 →
+   §19 变红（与规格口径不一致：integrity.grabFirst 页面=−5 期望=−8），退出码 1；
+   改回 −8 → 回绿（150 项全 ok，退出码 0）。前后输出留档：
+   artifacts/verification/wiki-antidrift-red.txt / wiki-antidrift-green.txt。
+
+### 测试与验收
+- 五条命令退出码全 0：scripts/check.mjs（0 错 0 警）、tests/run-all.mjs（9/9 脚本）、
+  scripts/ui-smoke.mjs（**150 项**，含百科 11 项：10 章 / 193 词条 / 逐项对账 / 无数字守卫 / 样式守卫）、
+  scripts/build-single.mjs（552 KB）、scripts/asset-audit.mjs（外部引用 0）。
+- 归档：versions/v1.5.0/wobang-son-academician.html 565 567 字节，sha256 2e7a64917fcc6ed7…，
+  与当前 dist/ 逐字节一致；version.mjs --archive 记录 check=0 / simulate=0，--verify 8 个版本目录全部对账一致。
+- 实机截图：artifacts/verification/wiki-mobile-375-top.png / -mid.png、wiki-desktop-1366-top.png / -mid.png。
+
 ---
 
 ## 契约变更记录
