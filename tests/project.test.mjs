@@ -203,6 +203,10 @@ function paperGame(seed, defId, leading) {
   s.ok(done.paperTiers.length > 0 && done.paperTiers.every((x) => x.firstAuthorId !== PLAYER_AUTHOR_ID),
     '(a) 学生负责的项目：一作都是学生', done.paperTiers.map((x) => x.firstAuthorName).join('、'));
   s.eq(paperTotal(after.player.papers), papersBefore, '(a) 老板一作数不变（学生一作不计入晋升门槛）');
+  const vmStuPapers = [].concat(buildViewModel(after).projects.list || [], buildViewModel(after).projects.archive || []).flatMap((x) => x.papers || []);
+  s.ok(vmStuPapers.length > 0 && vmStuPapers.every((x) => x.byPlayer === false),
+    '(a) 学生一作的论文在视图层标为 byPlayer=false（UI 显示「一作还在学生名下」）',
+    vmStuPapers.map((x) => x.firstAuthorName + ':' + x.byPlayer).join('、'));
   s.ok(after.player.totalIF > ifBefore, '(a) totalIF 增加（GDD §3.2：所有论文都算）',
     ifBefore + ' → ' + after.player.totalIF);
   s.note('(a) 学生负责的 ' + done.defId + ' 结题：老板一作 ' + papersBefore + ' → ' + paperTotal(after.player.papers)
@@ -231,6 +235,10 @@ function paperGame(seed, defId, leading) {
   s.eq(paperTotal(leadAfter.player.papers), leadBefore + leadDone.paperTiers.length,
     '(c) 亲带结题 → 老板一作数按台帐篇数全部 +1');
   s.ok(leadAfter.player.totalIF > leadIfBefore, '(c) totalIF 同样增加');
+  const vmLeadPapers = [].concat(buildViewModel(leadAfter).projects.list || [], buildViewModel(leadAfter).projects.archive || []).flatMap((x) => x.papers || []);
+  s.ok(vmLeadPapers.length > 0 && vmLeadPapers.every((x) => x.byPlayer === true),
+    '(c) 亲带论文在视图层标为 byPlayer=true（UI 显示「一作在你名下」，不再误报「一作还在学生名下」）',
+    vmLeadPapers.map((x) => x.firstAuthorName + ':' + x.byPlayer).join('、'));
   s.note('(c) 亲带的 ' + leadDone.defId + ' 结题：老板一作 ' + leadBefore + ' → ' + paperTotal(leadAfter.player.papers)
     + ' 篇（台帐 ' + leadDone.paperTiers.length + ' 篇全部归玩家），totalIF ' + leadIfBefore + ' → ' + leadAfter.player.totalIF);
 

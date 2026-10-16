@@ -7,7 +7,7 @@
 import { RANKS, rankOf, MAX_RANK_INDEX } from '../data/ranks.js';
 import { INSTRUMENTS, INSTRUMENT_MAP, INST_HOLD_CAP } from '../data/instruments.js';
 import { PROJECT_MAP, MARKET_SLOTS, PROJECT_SLOTS, STUDENT_SLOTS, REFRESH_MONTHLY, DEPOSIT_RATE } from '../data/projects.js';
-import { PAPER_TIER_LABELS, PAPER_TIER_ORDER, PAPER_BUY_PRICE, GRAB_FIRST_HAPPY, GRAB_GRUDGE_MONTHS, JOURNAL_IF_BASE } from '../data/papers.js';
+import { PAPER_TIER_LABELS, PAPER_TIER_ORDER, PAPER_BUY_PRICE, GRAB_FIRST_HAPPY, GRAB_GRUDGE_MONTHS, JOURNAL_IF_BASE, PLAYER_AUTHOR_ID } from '../data/papers.js';
 import { WAGE, WAGE_TIER_LABELS, DEGREE_LABELS, MASTER_STUDY_MONTHS, PHD_STUDY_MONTHS, DEGREE_PROGRESS_MAX, DEFER_HAPPY, DEFER_MONTHS_SUBTRACT, DEFER_QUOTA_MASTER, DEFER_QUOTA_PHD, DEFER_FREE_QUOTA } from '../data/students.js';
 import { MARKET_OPEN_MONTHS, POOL_TRANSLATE_MONTHS, POOL_EXAM_MONTHS, RECRUIT_PER_MONTH } from '../data/market.js';
 import { ACTION_DEFS } from '../data/actions.js';
@@ -207,7 +207,11 @@ export function selectProjectRow(state, project) {
       const st = state.students.find((s) => s.id === id);
       return st ? { id: st.id, name: st.name } : { id, name: '（已离组）' };
     }),
-    papers: (project.paperTiers || []).map((p) => p),
+    // 一作归属的机器可读标记（t24 规则）：亲带项目的论文 firstAuthorId === PLAYER_AUTHOR_ID。
+    // UI 必须据 byPlayer 渲染，不得只看 grabbed —— 否则会把老板亲带的论文误标成「一作还在学生名下」。
+    papers: (project.paperTiers || []).map((p) => (p && typeof p === 'object'
+      ? { ...p, byPlayer: p.firstAuthorId === PLAYER_AUTHOR_ID }
+      : p)),
     status: project.status,
   };
 }

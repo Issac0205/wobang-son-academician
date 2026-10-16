@@ -236,7 +236,9 @@ function uiPaperLedger(vm, p) {
     tag((papers && papers.labels && papers.labels[paper.tier]) || paper.tier, 'mute'),
     h('span', { class: 'paper-ledger-if', text: 'IF ' + uiNum1(paper.if) }),
     h('span', { class: 'paper-ledger-author', text: '一作 ' + (paper.firstAuthorName || '—') }),
-    paper.grabbed ? tag('已被抢', 'bad') : tag('一作还在学生名下', 'good'),
+    paper.grabbed
+      ? tag('已被抢', 'bad')
+      : (paper.byPlayer ? tag('一作在你名下', 'good') : tag('一作还在学生名下 · 可抢', 'info')),
   ])));
 }
 
