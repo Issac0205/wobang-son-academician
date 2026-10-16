@@ -113,7 +113,7 @@ function uiNextRoom(space) {
       button('申请这间 ' + uiNum1(next.price) + ' 万', { action: 'lab-buy-room' }, { kind: 'primary', class: 'btn-xs', disabled: !next.canBuy, title: next.reason || '新房间带 4 个空台位' }),
     ]),
     next.reason ? h('p', { class: 'muted', text: '暂时批不下来：' + next.reason }) : null,
-    later.length ? h('p', { class: 'room-later', text: '之后还能申请：' + later.map((r) => r.name + '（' + r.price + ' 万 · 头衔 ' + r.rankGate + '）').join('、') }) : null,
+    later.length ? h('p', { class: 'room-later', text: '之后还能申请：' + later.map((r) => r.name + '（' + r.price + ' 万 · ' + (r.rankGateTitle || ('头衔 ' + r.rankGate)) + ' 起）').join('、') }) : null,
   ]);
 }
 

@@ -1136,7 +1136,7 @@ function reduceBuyRoom(state) {
     return next;
   }
   if (next.player.rankIndex < def.rankGate) {
-    next.ui.toast = def.name + ' 要头衔 ' + def.rankGate + ' 才批得下来。';
+    next.ui.toast = def.name + ' 需要「' + rankOf(def.rankGate).title + '」及以上才批得下来；你现在是「' + rankOf(next.player.rankIndex).title + '」。';
     return next;
   }
   if (next.player.money < def.price) {
@@ -1171,7 +1171,7 @@ function reduceBuyBench(state, payload) {
     }
   }
   if (next.player.rankIndex < def.rankGate) {
-    next.ui.toast = def.name + '要头衔 ' + def.rankGate + ' 才能申购。';
+    next.ui.toast = def.name + '需要「' + rankOf(def.rankGate).title + '」及以上才能申购；你现在是「' + rankOf(next.player.rankIndex).title + '」。';
     return next;
   }
   if (next.player.money < def.price) {

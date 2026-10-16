@@ -105,7 +105,7 @@ node 评院士/scripts/version.mjs        # 版本一览；--archive 归档 / --
 
 ## 版本存档
 
-**当前发布：v1.2.0**（2026-10-16 上线）。已归档版本：v1.0.0 / v1.0.1 / v1.1.0 / v1.2.0。
+**当前发布：v1.2.1**（2026-10-16 上线）。已归档版本：v1.0.0 / v1.0.1 / v1.1.0 / v1.2.0 / v1.2.1。
 
 每个发布版本都在 `versions/vX.Y.Z/` 留档，里面是**可双击即玩的自包含单文件副本 + 一页说明 + `PROVENANCE.json` 溯源**（src 聚合哈希、单文件 SHA-256/字节数、check/simulate 退出码、验证 verdict）。约定与用法见 [`versions/README.md`](versions/README.md)；当前版本：[`versions/v1.0.0/`](versions/v1.0.0/)（直达单文件：`versions/v1.0.0/wobang-son-academician.html`）。
 

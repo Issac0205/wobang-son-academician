@@ -18,6 +18,7 @@ import { equipmentBonus, maintenanceTotal, instrumentPrice } from '../src/core/f
 import { INSTRUMENTS, INSTRUMENT_MAP } from '../src/data/instruments.js';
 import { PROJECT_MAP } from '../src/data/projects.js';
 import { ROOMS, BENCH_MAP, ROOM_MAX } from '../src/data/lab.js';
+import { selectLabSpace } from '../src/core/selectors.js';
 
 const mods = { createState, reduce, ACTIONS };
 const s = createSuite('实验室空间');
@@ -203,6 +204,37 @@ for (const defId of ['E5', 'E6', 'N7']) {
   s.ok(accepted.player.money > g.player.money, defId + ' 实接收到定金');
   const back = hydrate(serialize(accepted));
   s.ok(back.projects.some((p) => p.defId === defId), defId + ' 新项目读档保留');
+}
+
+/* ── 9 头衔门槛必须说人话：不得把内部索引（「头衔 2」）直接给玩家 ── */
+{
+  const g = freshGame(mods, 'lab-rank-title');            // 开局：副研究员（rankIndex 1）
+  const sp = selectLabSpace(g);
+  const big = sp.benches.find((b) => b.id === 'bench_big');
+  s.ok(Boolean(big), '实验台列表里有大型仪器台');
+  s.ok(Boolean(big) && typeof big.rankGateTitle === 'string' && big.rankGateTitle.length > 0,
+    '大型仪器台给的是头衔名 rankGateTitle，不是裸索引', big ? String(big.rankGateTitle) : '未找到');
+  s.ok(Boolean(big) && !/头衔\s*\d/.test(String(big.reason || '')),
+    '实验台被头衔挡住时，理由里不得出现「头衔 + 数字」', big ? String(big.reason) : '');
+  s.ok(Boolean(big) && String(big.reason || '').includes(big.rankGateTitle),
+    '实验台被头衔挡住时，理由要写明具体头衔名', big ? String(big.reason) : '');
+  const locked = sp.lockedRooms || [];
+  s.ok(locked.length > 0 && locked.every((r) => typeof r.rankGateTitle === 'string' && r.rankGateTitle.length > 0),
+    '后续房间列表也带头衔名（不再显示「头衔 3」）', locked.map((r) => r.rankGateTitle).join('、'));
+  // 房间：把头衔压到最低，下一间 A302（rankGate 1）就买不起
+  const g0 = freshGame(mods, 'lab-rank-title-0');
+  g0.player.rankIndex = 0;
+  const sp0 = selectLabSpace(g0);
+  s.ok(Boolean(sp0.nextRoom) && String(sp0.nextRoom.reason || '').includes(sp0.nextRoom.rankGateTitle),
+    '申请下一间实验室被头衔挡住时，理由要写明头衔名', sp0.nextRoom ? String(sp0.nextRoom.reason) : '无');
+  s.ok(Boolean(sp0.nextRoom) && !/头衔\s*\d/.test(String(sp0.nextRoom.reason || '')),
+    '申请实验室的理由里不得出现「头衔 + 数字」', sp0.nextRoom ? String(sp0.nextRoom.reason) : '');
+  // 引擎侧同样说人话，且告诉玩家自己现在是什么头衔
+  const denied = reduce(g, ACTIONS.buyBench({ type: 'bench_big' }));
+  s.ok(!/头衔\s*\d/.test(String(denied.ui.toast || '')),
+    '引擎拒绝买大型台时也不得出现「头衔 + 数字」', String(denied.ui.toast));
+  s.ok(String(denied.ui.toast || '').includes(big.rankGateTitle) && String(denied.ui.toast || '').includes('副研究员'),
+    '引擎拒绝时要写明「需要哪个头衔」和「你现在是什么头衔」', String(denied.ui.toast));
 }
 
 s.finish();

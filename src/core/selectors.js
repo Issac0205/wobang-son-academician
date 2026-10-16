@@ -291,17 +291,17 @@ export function selectLabSpace(state) {
   const nextIdx = rooms.length;
   const nextRoomDef = nextIdx < ROOM_MAX ? ROOMS[nextIdx] : null;
   const nextRoom = nextRoomDef ? (() => {
-    const reason = rank < nextRoomDef.rankGate ? '需头衔 ' + nextRoomDef.rankGate : (money < nextRoomDef.price ? '经费不足' : '');
-    return { roomIdx: nextIdx, id: nextRoomDef.id, name: nextRoomDef.name, price: nextRoomDef.price, rankGate: nextRoomDef.rankGate, flavor: nextRoomDef.flavor, canBuy: !reason, reason };
+    const reason = rank < nextRoomDef.rankGate ? '需「' + rankOf(nextRoomDef.rankGate).title + '」' : (money < nextRoomDef.price ? '经费不足' : '');
+    return { roomIdx: nextIdx, id: nextRoomDef.id, name: nextRoomDef.name, price: nextRoomDef.price, rankGate: nextRoomDef.rankGate, rankGateTitle: rankOf(nextRoomDef.rankGate).title, flavor: nextRoomDef.flavor, canBuy: !reason, reason };
   })() : null;
   const freeSlot = findEmptySlot(lab);
   const benches = BENCHES.map((b) => {
-    const reason = rank < b.rankGate ? '需头衔 ' + b.rankGate : (!freeSlot ? '没有空台位' : (money < b.price ? '经费不足' : ''));
-    return { id: b.id, name: b.name, w: b.w, h: b.h, cells: b.w * b.h, price: b.price, rankGate: b.rankGate, canBuy: !reason, reason };
+    const reason = rank < b.rankGate ? '需「' + rankOf(b.rankGate).title + '」' : (!freeSlot ? '没有空台位' : (money < b.price ? '经费不足' : ''));
+    return { id: b.id, name: b.name, w: b.w, h: b.h, cells: b.w * b.h, price: b.price, rankGate: b.rankGate, rankGateTitle: rankOf(b.rankGate).title, canBuy: !reason, reason };
   });
   return {
     rooms,
-    lockedRooms: ROOMS.slice(nextIdx).map((d) => ({ id: d.id, name: d.name, price: d.price, rankGate: d.rankGate, flavor: d.flavor })),
+    lockedRooms: ROOMS.slice(nextIdx).map((d) => ({ id: d.id, name: d.name, price: d.price, rankGate: d.rankGate, rankGateTitle: rankOf(d.rankGate).title, flavor: d.flavor })),
     nextRoom,
     benches,
     summary: spaceSummary(lab),

@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 我帮儿子评院士 v1.2.0 · 单文件构建 · 2026-10-16T08:21:56.830Z · 源码：38 个模块（纯前端 ES Module，零构建依赖） -->
+<!-- 我帮儿子评院士 v1.2.1 · 单文件构建 · 2026-10-16T08:43:28.975Z · 源码：38 个模块（纯前端 ES Module，零构建依赖） -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8" />
@@ -5092,7 +5092,7 @@ function reduceBuyRoom(state) {
     return next;
   }
   if (next.player.rankIndex < def.rankGate) {
-    next.ui.toast = def.name + ' 要头衔 ' + def.rankGate + ' 才批得下来。';
+    next.ui.toast = def.name + ' 需要「' + rankOf(def.rankGate).title + '」及以上才批得下来；你现在是「' + rankOf(next.player.rankIndex).title + '」。';
     return next;
   }
   if (next.player.money < def.price) {
@@ -5127,7 +5127,7 @@ function reduceBuyBench(state, payload) {
     }
   }
   if (next.player.rankIndex < def.rankGate) {
-    next.ui.toast = def.name + '要头衔 ' + def.rankGate + ' 才能申购。';
+    next.ui.toast = def.name + '需要「' + rankOf(def.rankGate).title + '」及以上才能申购；你现在是「' + rankOf(next.player.rankIndex).title + '」。';
     return next;
   }
   if (next.player.money < def.price) {
@@ -6712,17 +6712,17 @@ function selectLabSpace(state) {
   const nextIdx = rooms.length;
   const nextRoomDef = nextIdx < ROOM_MAX ? ROOMS[nextIdx] : null;
   const nextRoom = nextRoomDef ? (() => {
-    const reason = rank < nextRoomDef.rankGate ? '需头衔 ' + nextRoomDef.rankGate : (money < nextRoomDef.price ? '经费不足' : '');
-    return { roomIdx: nextIdx, id: nextRoomDef.id, name: nextRoomDef.name, price: nextRoomDef.price, rankGate: nextRoomDef.rankGate, flavor: nextRoomDef.flavor, canBuy: !reason, reason };
+    const reason = rank < nextRoomDef.rankGate ? '需「' + rankOf(nextRoomDef.rankGate).title + '」' : (money < nextRoomDef.price ? '经费不足' : '');
+    return { roomIdx: nextIdx, id: nextRoomDef.id, name: nextRoomDef.name, price: nextRoomDef.price, rankGate: nextRoomDef.rankGate, rankGateTitle: rankOf(nextRoomDef.rankGate).title, flavor: nextRoomDef.flavor, canBuy: !reason, reason };
   })() : null;
   const freeSlot = findEmptySlot(lab);
   const benches = BENCHES.map((b) => {
-    const reason = rank < b.rankGate ? '需头衔 ' + b.rankGate : (!freeSlot ? '没有空台位' : (money < b.price ? '经费不足' : ''));
-    return { id: b.id, name: b.name, w: b.w, h: b.h, cells: b.w * b.h, price: b.price, rankGate: b.rankGate, canBuy: !reason, reason };
+    const reason = rank < b.rankGate ? '需「' + rankOf(b.rankGate).title + '」' : (!freeSlot ? '没有空台位' : (money < b.price ? '经费不足' : ''));
+    return { id: b.id, name: b.name, w: b.w, h: b.h, cells: b.w * b.h, price: b.price, rankGate: b.rankGate, rankGateTitle: rankOf(b.rankGate).title, canBuy: !reason, reason };
   });
   return {
     rooms,
-    lockedRooms: ROOMS.slice(nextIdx).map((d) => ({ id: d.id, name: d.name, price: d.price, rankGate: d.rankGate, flavor: d.flavor })),
+    lockedRooms: ROOMS.slice(nextIdx).map((d) => ({ id: d.id, name: d.name, price: d.price, rankGate: d.rankGate, rankGateTitle: rankOf(d.rankGate).title, flavor: d.flavor })),
     nextRoom,
     benches,
     summary: spaceSummary(lab),
@@ -8037,7 +8037,7 @@ function uiNextRoom(space) {
       button('申请这间 ' + uiNum1(next.price) + ' 万', { action: 'lab-buy-room' }, { kind: 'primary', class: 'btn-xs', disabled: !next.canBuy, title: next.reason || '新房间带 4 个空台位' }),
     ]),
     next.reason ? h('p', { class: 'muted', text: '暂时批不下来：' + next.reason }) : null,
-    later.length ? h('p', { class: 'room-later', text: '之后还能申请：' + later.map((r) => r.name + '（' + r.price + ' 万 · 头衔 ' + r.rankGate + '）').join('、') }) : null,
+    later.length ? h('p', { class: 'room-later', text: '之后还能申请：' + later.map((r) => r.name + '（' + r.price + ' 万 · ' + (r.rankGateTitle || ('头衔 ' + r.rankGate)) + ' 起）').join('、') }) : null,
   ]);
 }
 
